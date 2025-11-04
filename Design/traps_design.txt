@@ -1,0 +1,8 @@
+TRAPS DESIGN DOCUMENT
+
+top of head types of traps
+spikes - injures the agent + applies opposite knockback to agent + minor stun (stop moving) when collided with
+arrow trap - activated by pressure plate (which can be seen) that will fire arrows that injure/kill the agent
+moving lasers - active on a timer, first moves in a singular direction that sweeps an area then deactivates for
+a set amount of time (not entirely certain on the balancing of this)
+fire trap - active on a timer, spews fire in one direction then dampens down and turned off until timer is reset

@@ -1,0 +1,15 @@
+MAZE DESIGN DOCUMENT:
+
+off the top features:
+- dynamically generated
+- 2D
+- Room based
+- traps to hinder the agent's progress and add variability
+- there will be an x amount of room that is either determined by the user beforehand or randomly in a range
+- rooms will contain a randomly generated challenge that agents will have to get through to go on to the next room
+- rooms may have more than one exit, meaning they branch off into a different room separate from the original path,
+  but will always be the same length to the exit to introduce more variability. Will have option to enable branching
+  rooms, will make this not customizable (for now idk) as there's quite a few parameters
+- will have a movable camera where you can see all of the rooms at once, like you can freely move around the camera
+  and scale it out. Also able to spectate individual agents and have camera be tracked on that
+- 

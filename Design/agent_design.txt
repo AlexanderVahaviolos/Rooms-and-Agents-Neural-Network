@@ -1,0 +1,22 @@
+AGENT DESIGN DOCUMENT:
+	
+off the top ideas:
+- will have it's own health that acts like attempts for the run so it lasts a lttle longer
+- will have it own controller that controls its velocities in order to move
+- will not be doing any jumps as this simulation is in top-down perspective, won't look right
+- will observe the environment around them with raycasts that determine these things:
+	distance from self to endpoint of raycast
+	what is hitting the endpoint of the raycast
+- Agents will have a very large raycast, they can "see" from one end of a room to the next, and they do not know
+  where the exit location is until their raycasts "sees" it, so they have to learn to find the exit and then pass
+  the traps in order to reach it. (will need to find out how to not make agents not like run around in circles and
+  to like proceed towards traps because most likely the exit will be somewhere past them)
+- agents can be spectated which will make camera focus on them (with some dampening) and showcases their brain, 
+  their current velocity, time alive and score
+
+	DETERMINANTS
+	the angle of the ray
+	vision depth, (short-range, mid-range, long-range) to determine what to do next (unsure if needed)
+	
+	TIME PERMITTING:
+		if implementing moving traps, will calculate the relative velocities between self and object moving

@@ -1,0 +1,15 @@
+OVERALL DESIGN DOCUMENT:
+	
+make a reinforcement learning neural network for agents going through a maze that contain traps where they are
+graded based on performance and penalized if they do certain unwanted actions during the training process.
+
+(game will be 2D)
+
+CONTAINS:
+	MAZE:
+	will be a randomly generated discrete maze (might use wave function collapse) that contain traps
+	
+	AGENTS:
+	will be the entities that will navigate and learn how to avoid being penalized and try to obtain
+	the greatest performance that are inherited through each generation
+	

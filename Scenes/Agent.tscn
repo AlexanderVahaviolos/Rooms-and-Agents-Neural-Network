@@ -1,0 +1,24 @@
+[gd_scene load_steps=5 format=3 uid="uid://bhyy0dr278vwm"]
+
+[ext_resource type="Script" uid="uid://bjhf63a1ud7xh" path="res://Scripts/Agent.gd" id="1_ptvjr"]
+
+[sub_resource type="Gradient" id="Gradient_15vgw"]
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_ptvjr"]
+gradient = SubResource("Gradient_15vgw")
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_xhs4t"]
+radius = 32.01562
+
+[node name="Agent" type="CharacterBody2D"]
+collision_mask = 2
+script = ExtResource("1_ptvjr")
+
+[node name="AgentSprite" type="Sprite2D" parent="."]
+texture = SubResource("GradientTexture2D_ptvjr")
+
+[node name="AgentCollider" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_xhs4t")
+
+[node name="RayCast2D" type="RayCast2D" parent="."]
+collide_with_areas = true
