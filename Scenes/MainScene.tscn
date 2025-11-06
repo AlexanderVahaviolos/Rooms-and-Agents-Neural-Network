@@ -1,14 +1,18 @@
-[gd_scene load_steps=4 format=3 uid="uid://djc78b1oo870w"]
+[gd_scene load_steps=6 format=3 uid="uid://djc78b1oo870w"]
 
 [ext_resource type="Script" uid="uid://buudbiv2a8l38" path="res://Scripts/MainScene.gd" id="1_hpc76"]
 [ext_resource type="PackedScene" uid="uid://djp5h0dj1pxl4" path="res://Scenes/Room.tscn" id="2_nhkr4"]
 [ext_resource type="PackedScene" uid="uid://bhyy0dr278vwm" path="res://Scenes/Agent.tscn" id="3_7rqgy"]
+[ext_resource type="PackedScene" uid="uid://c0iktnuw2tq5e" path="res://Scenes/controllable_agent.tscn" id="4_7rqgy"]
+[ext_resource type="PackedScene" uid="uid://bpnpiciit0b2v" path="res://Scenes/target.tscn" id="5_qxria"]
 
 [node name="MainScene" type="Node2D"]
 script = ExtResource("1_hpc76")
-start_agent_count = 20
+start_agent_count = 0
 MazeScene = ExtResource("2_nhkr4")
 AgentScene = ExtResource("3_7rqgy")
+ControllableAgentScene = ExtResource("4_7rqgy")
+enable_character = true
 
 [node name="SimulationCamera" type="Camera2D" parent="."]
 position = Vector2(56, 0)
@@ -40,3 +44,8 @@ horizontal_alignment = 2
 [node name="MazeContainer" type="Node2D" parent="."]
 
 [node name="AgentContainer" type="Node2D" parent="."]
+
+[node name="TargetContainer" type="Node2D" parent="."]
+
+[node name="target" parent="TargetContainer" instance=ExtResource("5_qxria")]
+position = Vector2(-88, 128)

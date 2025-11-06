@@ -15,6 +15,10 @@ var current_agent_count: int = start_agent_count
 @onready var GenerationLabel: Label = $SimulationCamera/SimulationUI/Generation
 @onready var ScoreLabel: Label = $SimulationCamera/SimulationUI/Score
 
+@export_category("DEBUG")
+@export var ControllableAgentScene: PackedScene
+@export var enable_character: bool = false
+
 var maze
 var enter_location: Vector2i
 var exit_location: Vector2i
@@ -32,10 +36,10 @@ func _ready() -> void:
 	_setup()
 
 # Just an agent size check
-func _physics_process(delta: float) -> void:
-	if agents.size() > 0:
+func _physics_process(_delta: float) -> void:
+	if agents.size() > 0 and !enable_character:
 		pass
-	else:
+	elif agents.size() <= 0 and !enable_character:
 		generation += 1
 		_next_generation()
 		
@@ -45,12 +49,16 @@ func _setup() -> void:
 	# generate maze code
 	
 	# generate the agents 
-	for i in range(start_agent_count):
-		var agent_instance = AgentScene.instantiate()
-		agent_instance.name = str(generation) + "-" + str(i)
-		agent_instance.connect("send_instance", Callable(self, "_on_send_agent_instance"))
+	if !enable_character:
+		for i in range(start_agent_count):
+			var agent_instance = AgentScene.instantiate()
+			agent_instance.name = str(generation) + "-" + str(i)
+			agent_instance.connect("send_instance", Callable(self, "_on_send_agent_instance"))
+			AgentContainer.add_child(agent_instance)
+			agents[agent_instance.name] = agent_instance
+	else:
+		var agent_instance = ControllableAgentScene.instantiate()
 		AgentContainer.add_child(agent_instance)
-		agents[agent_instance.name] = agent_instance
 
 	GenerationLabel.text = "Generation " + str(generation)
 	ScoreLabel.text = "Previous Top Score: 0"

@@ -1,0 +1,29 @@
+[gd_scene load_steps=6 format=3 uid="uid://bpnpiciit0b2v"]
+
+[ext_resource type="Script" uid="uid://dvdve1lxbbxi5" path="res://Scripts/target.gd" id="1_vq1qf"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_7f73g"]
+friction = 0.4
+
+[sub_resource type="Gradient" id="Gradient_15vgw"]
+colors = PackedColorArray(0.4558922, 0.20475176, 0.107339405, 1, 0.63396966, 0.34858242, 0.044347465, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_vq1qf"]
+gradient = SubResource("Gradient_15vgw")
+fill = 1
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_ls7vh"]
+radius = 32.01562
+
+[node name="target" type="RigidBody2D"]
+collision_layer = 2
+collision_mask = 0
+physics_material_override = SubResource("PhysicsMaterial_7f73g")
+gravity_scale = 0.0
+script = ExtResource("1_vq1qf")
+
+[node name="TargetSprite" type="Sprite2D" parent="."]
+texture = SubResource("GradientTexture2D_vq1qf")
+
+[node name="TargetCollider" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_ls7vh")
