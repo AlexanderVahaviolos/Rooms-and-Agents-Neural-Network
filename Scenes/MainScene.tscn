@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://djc78b1oo870w"]
+[gd_scene load_steps=7 format=3 uid="uid://djc78b1oo870w"]
 
 [ext_resource type="Script" uid="uid://buudbiv2a8l38" path="res://Scripts/MainScene.gd" id="1_hpc76"]
 [ext_resource type="PackedScene" uid="uid://djp5h0dj1pxl4" path="res://Scenes/Room.tscn" id="2_nhkr4"]
 [ext_resource type="PackedScene" uid="uid://bhyy0dr278vwm" path="res://Scenes/Agent.tscn" id="3_7rqgy"]
 [ext_resource type="PackedScene" uid="uid://c0iktnuw2tq5e" path="res://Scenes/controllable_agent.tscn" id="4_7rqgy"]
 [ext_resource type="PackedScene" uid="uid://bpnpiciit0b2v" path="res://Scenes/target.tscn" id="5_qxria"]
+[ext_resource type="PackedScene" uid="uid://5vc2smd5iind" path="res://Scenes/fire_hazard.tscn" id="6_y4jh7"]
 
 [node name="MainScene" type="Node2D"]
 script = ExtResource("1_hpc76")
@@ -15,7 +16,7 @@ ControllableAgentScene = ExtResource("4_7rqgy")
 enable_character = true
 
 [node name="SimulationCamera" type="Camera2D" parent="."]
-position = Vector2(56, 0)
+zoom = Vector2(3.4, 3.4)
 
 [node name="SimulationUI" type="Control" parent="SimulationCamera"]
 layout_mode = 3
@@ -45,7 +46,10 @@ horizontal_alignment = 2
 
 [node name="AgentContainer" type="Node2D" parent="."]
 
-[node name="TargetContainer" type="Node2D" parent="."]
+[node name="HazardContainer" type="Node2D" parent="."]
 
-[node name="target" parent="TargetContainer" instance=ExtResource("5_qxria")]
+[node name="target" parent="HazardContainer" instance=ExtResource("5_qxria")]
 position = Vector2(-88, 128)
+
+[node name="FireHazard" parent="HazardContainer" instance=ExtResource("6_y4jh7")]
+position = Vector2(39, 8)

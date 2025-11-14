@@ -1,0 +1,70 @@
+[gd_scene load_steps=7 format=3 uid="uid://5vc2smd5iind"]
+
+[ext_resource type="Script" uid="uid://b2cxmxx6atu31" path="res://Components/Hazards/FireComponent.gd" id="1_xm34u"]
+[ext_resource type="Texture2D" uid="uid://gax01mdt3kmc" path="res://Sprites/hazards.png" id="2_3frdq"]
+
+[sub_resource type="Animation" id="Animation_xv73o"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("HazardSprite:frame_coords")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [Vector2i(0, 1)]
+}
+
+[sub_resource type="Animation" id="Animation_b0pwb"]
+resource_name = "fire"
+length = 0.6
+loop_mode = 1
+step = 0.05
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("HazardSprite:frame_coords")
+tracks/0/interp = 0
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.15, 0.3, 0.45),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 1,
+"values": [Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_xv4nc"]
+_data = {
+&"RESET": SubResource("Animation_xv73o"),
+&"fire": SubResource("Animation_b0pwb")
+}
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_b0pwb"]
+radius = 5.0
+
+[node name="FireHazard" type="Area2D" node_paths=PackedStringArray("FireAnimation")]
+collision_layer = 2
+script = ExtResource("1_xm34u")
+FireAnimation = NodePath("AnimationPlayer")
+damage_dealt = 2
+knockback_force = 50.0
+metadata/_custom_type_script = "uid://b2cxmxx6atu31"
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_xv4nc")
+}
+
+[node name="HazardSprite" type="Sprite2D" parent="."]
+texture_filter = 1
+texture = ExtResource("2_3frdq")
+hframes = 4
+vframes = 4
+frame = 4
+
+[node name="HazardCollider" type="CollisionShape2D" parent="."]
+position = Vector2(0, 2)
+shape = SubResource("CircleShape2D_b0pwb")

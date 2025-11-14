@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3 uid="uid://bnnroyotxaufp"]
+
+[ext_resource type="Script" uid="uid://b2cxmxx6atu31" path="res://Components/Hazards/FireComponent.gd" id="1_f6v7v"]
+
+[sub_resource type="Gradient" id="Gradient_ywuk8"]
+offsets = PackedFloat32Array(0.24666667, 1)
+colors = PackedColorArray(0.78707045, 0.19032401, 0.057119332, 1, 1, 0.9213333, 0.41000003, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_f6v7v"]
+gradient = SubResource("Gradient_ywuk8")
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 1)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_eoy5a"]
+radius = 32.01562
+
+[node name="SpikeHazard" type="Area2D"]
+script = ExtResource("1_f6v7v")
+metadata/_custom_type_script = "uid://b2cxmxx6atu31"
+
+[node name="HazardSprite" type="Sprite2D" parent="."]
+texture = SubResource("GradientTexture2D_f6v7v")
+
+[node name="HazardCollider" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_eoy5a")

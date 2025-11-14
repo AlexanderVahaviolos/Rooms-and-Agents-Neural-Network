@@ -1,0 +1,10 @@
+@abstract
+class_name Hazard extends Area2D
+
+var hazard_type: String
+
+@export var damage_dealt: int = 10
+@export var knockback_force: float
+
+@abstract
+func _on_hazard_enter(body: Node2D) -> void

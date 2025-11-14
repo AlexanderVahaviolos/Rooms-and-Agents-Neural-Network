@@ -15,6 +15,10 @@ run/main_scene="uid://djc78b1oo870w"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[global_group]
+
+Player=""
+
 [input]
 
 up={
@@ -41,7 +45,7 @@ right={
 [layer_names]
 
 2d_physics/layer_1="agents"
-2d_physics/layer_2="targets"
+2d_physics/layer_2="hazards"
 
 [rendering]
 

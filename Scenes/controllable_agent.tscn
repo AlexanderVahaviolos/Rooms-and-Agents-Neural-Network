@@ -1,34 +1,129 @@
-[gd_scene load_steps=6 format=3 uid="uid://c0iktnuw2tq5e"]
+[gd_scene load_steps=13 format=3 uid="uid://c0iktnuw2tq5e"]
 
 [ext_resource type="Script" uid="uid://bclmhuthf1wn7" path="res://Scripts/controllable_agent.gd" id="1_y4x24"]
+[ext_resource type="Script" uid="uid://dkha4eqw0qmoa" path="res://Components/DetectionComponent.gd" id="2_bbcp7"]
+[ext_resource type="Script" uid="uid://d02olb4wb0hhx" path="res://Components/HealthComponent.gd" id="2_dwdqi"]
+[ext_resource type="Script" uid="uid://byd3700ubxftj" path="res://Scripts/States/state_machine.gd" id="2_qbfg8"]
 [ext_resource type="Script" uid="uid://csj7q8fitqvrx" path="res://Components/MovementComponent.gd" id="2_ywuk8"]
+[ext_resource type="Texture2D" uid="uid://duyhklxq2o5r7" path="res://Sprites/agentSpritesheet.png" id="4_q6esm"]
 
-[sub_resource type="Gradient" id="Gradient_ywuk8"]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_6dhqv"]
+size = Vector2(28, 42)
 
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_ywuk8"]
-gradient = SubResource("Gradient_ywuk8")
+[sub_resource type="Animation" id="Animation_qbfg8"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("AgentSprite:frame_coords")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [Vector2i(0, 0)]
+}
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_dwdqi"]
-radius = 32.01562
+[sub_resource type="Animation" id="Animation_q6esm"]
+resource_name = "idle"
+length = 1.5
+loop_mode = 1
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("AgentSprite:frame_coords")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.2, 1),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 1,
+"values": [Vector2i(0, 0), Vector2i(2, 0), Vector2i(3, 0)]
+}
 
-[node name="ControllableAgent" type="CharacterBody2D" node_paths=PackedStringArray("movement_component")]
-collision_mask = 2
+[sub_resource type="Animation" id="Animation_bbcp7"]
+resource_name = "move"
+length = 0.8
+loop_mode = 1
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("AgentSprite:frame_coords")
+tracks/0/interp = 0
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1), Vector2i(4, 1), Vector2i(5, 1), Vector2i(6, 1), Vector2i(7, 1)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_6dhqv"]
+_data = {
+&"RESET": SubResource("Animation_qbfg8"),
+&"idle": SubResource("Animation_q6esm"),
+&"move": SubResource("Animation_bbcp7")
+}
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_qbfg8"]
+radius = 4.0
+height = 12.0
+
+[node name="ControllableAgent" type="CharacterBody2D"]
+collision_mask = 0
 script = ExtResource("1_y4x24")
-movement_component = NodePath("MovementComponent")
+iframes_on_hit = 20
+
+[node name="Area2D" type="Area2D" parent="." node_paths=PackedStringArray("Respondee")]
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("2_bbcp7")
+Respondee = NodePath("..")
+PayloadSendTime = 0.1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+position = Vector2(0, 21)
+shape = SubResource("RectangleShape2D_6dhqv")
+
+[node name="AgentAnimator" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_6dhqv")
+}
+
+[node name="StateMachine" type="Node" parent="." node_paths=PackedStringArray("owner_ref")]
+script = ExtResource("2_qbfg8")
+owner_ref = NodePath("..")
+initial_state = "idle"
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("2_dwdqi")
+max_health = 10
+current_health = 10
+defense = 0
+metadata/_custom_type_script = "uid://d02olb4wb0hhx"
 
 [node name="MovementComponent" type="Node" parent="."]
 script = ExtResource("2_ywuk8")
-acceleration = 500.0
-decceleration = 400.0
-max_velocity = Vector2(100, 100)
+acceleration = 210.0
+decceleration = 600.0
+max_velocity = Vector2(60, 60)
 
 [node name="AgentSprite" type="Sprite2D" parent="."]
-texture = SubResource("GradientTexture2D_ywuk8")
+texture_filter = 1
+texture = ExtResource("4_q6esm")
+offset = Vector2(0, -6)
+hframes = 8
+vframes = 2
 
 [node name="AgentCollider" type="CollisionShape2D" parent="."]
-shape = SubResource("CircleShape2D_dwdqi")
+position = Vector2(0, -5)
+shape = SubResource("CapsuleShape2D_qbfg8")
 
 [node name="RayCast2D" type="RayCast2D" parent="."]
+visible = false
 target_position = Vector2(0, 150)
 collision_mask = 2
 collide_with_areas = true
