@@ -9,7 +9,7 @@ var current_agent_count: int = start_agent_count
 @export var MazeScene: PackedScene
 @export var AgentScene: PackedScene
 
-@onready var MazeContainer: Node2D = $MazeContainer
+@onready var RoomContainer: Node2D = $RoomContainer
 @onready var AgentContainer: Node2D = $AgentContainer
 
 @onready var GenerationLabel: Label = $SimulationCamera/SimulationUI/Generation
@@ -127,7 +127,7 @@ func mutate(parent_net: Net) -> Net:
 	
 	for i in range(parent_net.layers.size()):
 		for j in range(parent_net.layers[i].neurons.size()):
-			for k in range(4): # TEMP, SHOULD BE DYNAMIC TO HOW MANY ACTUAL INPUTS THERE ARE
+			for k in range(6): # TEMP, SHOULD BE DYNAMIC TO HOW MANY ACTUAL INPUTS THERE ARE
 				if randf() <= mutation_rate:
 					mutation.layers[i].neurons[j].weights.append(randf_range(-1, 1))
 				else:

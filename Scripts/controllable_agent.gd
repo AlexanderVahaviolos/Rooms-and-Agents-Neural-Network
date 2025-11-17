@@ -6,13 +6,14 @@ extends CharacterBody2D
 @onready var health_component: HealthComponent = $HealthComponent
 @onready var movement_component: MovementComponent = $MovementComponent
 
-@onready var raycast: RayCast2D = $RayCast2D
-
 @export var iframes_on_hit: int
-var iframes: int = 0
+var iframes: float = 0
 var knockback_enabled: bool = false
 
 var flip_threshold: float = 0.1
+
+# x-pos: room number | y-pos: room number variant
+var current_room: Vector2i = Vector2i(1, 1)
 
 var states: Dictionary = {
 	"idle": preload("res://Scripts/States/ControlledAgentStates/CAgentIdle.gd").new(),

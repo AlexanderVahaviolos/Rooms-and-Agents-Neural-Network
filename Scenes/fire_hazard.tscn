@@ -49,6 +49,7 @@ radius = 5.0
 collision_layer = 2
 script = ExtResource("1_xm34u")
 FireAnimation = NodePath("AnimationPlayer")
+ticks = null
 damage_dealt = 2
 knockback_force = 50.0
 metadata/_custom_type_script = "uid://b2cxmxx6atu31"

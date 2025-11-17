@@ -1,4 +1,4 @@
-extends Resource
+extends RefCounted
 class_name Layer
 
 var neurons: Array[Neuron] = []

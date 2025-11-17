@@ -1,45 +1,56 @@
-extends Area2D
 class_name DetectionComponent
+extends Area2D
+
+signal targetsUpdated(target: Dictionary[String, Dictionary])
 
 @export var Respondee: Node
 @export_range(0.0, 1.0, 0.1) var PayloadSendTime: float
 @onready var DetectionArea: CollisionShape2D = $CollisionShape2D
 
-var detect_timer: Timer = Timer.new()
+var current_direction: Vector2 = Vector2(1, 0)
+var next_direction: Vector2
+
 var targets: Dictionary[String, Dictionary]
 
 func _ready() -> void:
 	connect("area_entered", Callable(self, "_on_area_entered"))
 	connect("area_exited", Callable(self, "_on_area_exited"))
-	detect_timer.connect("timeout", Callable(self, "_on_timeout"))
 	
-	detect_timer.wait_time = PayloadSendTime
-	add_child(detect_timer)
 	collision_layer = 0
-	collision_mask << 2
+	#collision_mask << 2
+
+func _to_string() -> String:
+	var line: String = ""
+	for value in targets.values():
+		line += str(value)
+	return line	
 	
-func _physics_process(_delta: float) -> void:
-	if targets.size() > 0:
-		if detect_timer.is_stopped():
-			detect_timer.start()		
-		
-		for target in targets.values():
+func _physics_process(_delta: float) -> void:	
+	for target in targets.values():
 			target["distance"] = Respondee.global_position - target["instance"].global_position
 		
-	elif targets.size() == 0:
-		detect_timer.stop()
+	if Respondee.movement_component.direction != Vector2.ZERO:
+		next_direction = Respondee.movement_component.direction
+	if next_direction != current_direction:
+		current_direction = next_direction
+		rotation = atan2(next_direction.y, next_direction.x)
 
 func _on_area_entered(area: Area2D) -> void:
-	print(area)
-	targets[area.name] = {
-		"instance": area,
-		"hazard": area.hazard_type,
-		"bounds": area.hazard_bounds,
-		"distance": Respondee.global_position - area.global_position
-	}
+	#print(area)
+	if area is Exit:
+		targets[area.name] = {
+			"instance": area,
+			"bounds": area.shape_bounds,
+			"distance": Respondee.global_position - area.global_position
+		}	
+	elif area is Hazard:
+		targets[area.name] = {
+			"instance": area,
+			"hazard": area.hazard_type,
+			"bounds": area.hazard_bounds,
+			"distance": Respondee.global_position - area.global_position
+		}
+	emit_signal("targetsUpdated", targets)
 
 func _on_area_exited(area: Area2D) -> void:
 	targets.erase(area.name)
-
-func _on_timeout() -> void:
-	print(targets.values())

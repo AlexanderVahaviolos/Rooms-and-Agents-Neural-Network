@@ -1,12 +1,12 @@
 extends Node
 class_name MovementComponent
 
-@export var direction := Vector2.ZERO
-@export var acceleration := 150.0
-@export var decceleration := 250.0
-@export var max_velocity := Vector2(50.0, 45.0)
+@export var direction: Vector2 = Vector2.ZERO
+@export var acceleration: float = 150.0
+@export var decceleration: float = 250.0
+@export var max_velocity: Vector2 = Vector2(50.0, 45.0)
 
-var velocity := Vector2.ZERO
+var velocity: Vector2 = Vector2.ZERO
 
 # Should always be called from _physics_process
 func accelerate(delta: float) -> void:	
@@ -16,4 +16,6 @@ func accelerate(delta: float) -> void:
 
 func decelerate(delta: float) -> void:
 	velocity = velocity.move_toward(Vector2.ZERO, decceleration * delta).round()
-		
+
+func brake(delta: float) -> void:
+	velocity = velocity.move_toward(Vector2.ZERO, decceleration * delta * 2.0).round()

@@ -1,7 +1,7 @@
 @abstract
 class_name Hazard extends Area2D
 
-var hazard_type: String
+var hazard_type: int
 
 @export var damage_dealt: int = 10
 @export var knockback_force: float

@@ -7,7 +7,7 @@ class_name FireComponent extends Hazard
 var hazard_bounds: Rect2i
 
 func _ready() -> void:
-	hazard_type = "Fire"
+	hazard_type = SimulationManager.Detectables.FIRE
 	connect("body_entered", Callable(self, "_on_hazard_enter"))
 	FireAnimation.play("fire")
 	
@@ -20,6 +20,7 @@ func _on_hazard_enter(body: Node2D) -> void:
 		var knockback_direction = -body.movement_component.direction
 		print("APPLIED ", damage_dealt, " DAMAGE")
 		body.health_component.apply_damage(damage_dealt)
+		body.score -= 50
 		if knockback_force > 0:
 			body.knockback_enabled = true
 			print("APPLIED ", knockback_force, " IN ", knockback_direction)

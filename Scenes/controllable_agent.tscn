@@ -8,7 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://duyhklxq2o5r7" path="res://Sprites/agentSpritesheet.png" id="4_q6esm"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_6dhqv"]
-size = Vector2(28, 42)
+size = Vector2(61, 34.25)
 
 [sub_resource type="Animation" id="Animation_qbfg8"]
 length = 0.001
@@ -74,18 +74,19 @@ height = 12.0
 
 [node name="ControllableAgent" type="CharacterBody2D"]
 collision_mask = 0
+motion_mode = 1
 script = ExtResource("1_y4x24")
 iframes_on_hit = 20
 
-[node name="Area2D" type="Area2D" parent="." node_paths=PackedStringArray("Respondee")]
+[node name="DetectionComponent" type="Area2D" parent="." node_paths=PackedStringArray("Respondee")]
 collision_layer = 0
-collision_mask = 2
+collision_mask = 6
 script = ExtResource("2_bbcp7")
 Respondee = NodePath("..")
 PayloadSendTime = 0.1
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
-position = Vector2(0, 21)
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionComponent"]
+position = Vector2(24, 0)
 shape = SubResource("RectangleShape2D_6dhqv")
 
 [node name="AgentAnimator" type="AnimationPlayer" parent="."]
@@ -121,9 +122,3 @@ vframes = 2
 [node name="AgentCollider" type="CollisionShape2D" parent="."]
 position = Vector2(0, -5)
 shape = SubResource("CapsuleShape2D_qbfg8")
-
-[node name="RayCast2D" type="RayCast2D" parent="."]
-visible = false
-target_position = Vector2(0, 150)
-collision_mask = 2
-collide_with_areas = true

@@ -1,5 +1,5 @@
-extends Resource
 class_name Neuron
+extends RefCounted
 
 var weights: Array[float] = []
 
