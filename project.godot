@@ -22,9 +22,12 @@ SimulationManager="*res://Autoloads/SimulationManager.gd"
 
 [display]
 
-window/size/viewport_width=1900
-window/size/viewport_height=1000
+window/size/viewport_width=640
+window/size/viewport_height=360
 window/size/mode=3
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
 
 [global_group]
 
@@ -63,8 +66,10 @@ fullscreen={
 2d_physics/layer_1="agents"
 2d_physics/layer_2="hazards"
 2d_physics/layer_3="doors"
+2d_physics/layer_4="static"
 
 [rendering]
 
+textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"

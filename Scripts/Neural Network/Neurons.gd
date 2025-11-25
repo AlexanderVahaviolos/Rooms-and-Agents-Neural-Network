@@ -4,7 +4,7 @@ extends RefCounted
 var weights: Array[float] = []
 
 func predict(input: Array) -> float:
-	while weights.size() <= input.size():
+	while weights.size() < input.size():
 		weights.append(randf_range(-1.0, 1.0))
 		
 	var sum: float = 0.0

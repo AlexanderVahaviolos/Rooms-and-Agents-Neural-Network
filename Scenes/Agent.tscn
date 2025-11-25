@@ -1,14 +1,14 @@
-[gd_scene load_steps=13 format=3 uid="uid://bhyy0dr278vwm"]
+[gd_scene load_steps=16 format=3 uid="uid://bhyy0dr278vwm"]
 
 [ext_resource type="Script" uid="uid://bjhf63a1ud7xh" path="res://Scripts/Agent.gd" id="1_ptvjr"]
 [ext_resource type="Script" uid="uid://dkha4eqw0qmoa" path="res://Components/DetectionComponent.gd" id="2_hnfty"]
+[ext_resource type="Texture2D" uid="uid://bxdmsflstldvn" path="res://Sprites/Shapes/circle.png" id="2_n8wqh"]
+[ext_resource type="Script" uid="uid://cbjacdx3op603" path="res://Components/ShadowComponent.gd" id="3_2wyri"]
 [ext_resource type="Script" uid="uid://byd3700ubxftj" path="res://Scripts/States/state_machine.gd" id="3_n8wqh"]
 [ext_resource type="Script" uid="uid://d02olb4wb0hhx" path="res://Components/HealthComponent.gd" id="4_2wyri"]
 [ext_resource type="Script" uid="uid://csj7q8fitqvrx" path="res://Components/MovementComponent.gd" id="5_xs5q6"]
 [ext_resource type="Texture2D" uid="uid://duyhklxq2o5r7" path="res://Sprites/agentSpritesheet.png" id="6_isa54"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_ymeuh"]
-size = Vector2(61, 34.25)
+[ext_resource type="Shader" uid="uid://bswvdmsk1qy0j" path="res://Components/Shaders/outline.gdshader" id="8_xs5q6"]
 
 [sub_resource type="Animation" id="Animation_qbfg8"]
 length = 0.001
@@ -68,14 +68,21 @@ _data = {
 &"move": SubResource("Animation_bbcp7")
 }
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_isa54"]
+shader = ExtResource("8_xs5q6")
+shader_parameter/outline_color = Color(1, 1, 1, 0)
+shader_parameter/blink_color = Color(1, 1, 1, 1)
+shader_parameter/blink_time_scale = 0.0
+
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_v6xq5"]
-radius = 4.0
-height = 12.0
+radius = 3.0
+height = 8.0
 
 [node name="Agent" type="CharacterBody2D"]
-collision_mask = 2
+collision_mask = 10
 motion_mode = 1
 script = ExtResource("1_ptvjr")
+iframes_on_hit = 30
 
 [node name="DetectionComponent" type="Area2D" parent="." node_paths=PackedStringArray("Respondee")]
 collision_layer = 0
@@ -84,9 +91,9 @@ script = ExtResource("2_hnfty")
 Respondee = NodePath("..")
 PayloadSendTime = 0.1
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionComponent"]
-position = Vector2(24, 0)
-shape = SubResource("RectangleShape2D_ymeuh")
+[node name="DetectionShape" type="CollisionPolygon2D" parent="DetectionComponent"]
+visible = false
+polygon = PackedVector2Array(120, 90, -5, 15, -15, 0, -5, -15, 120, -90)
 
 [node name="AgentAnimator" type="AnimationPlayer" parent="."]
 libraries = {
@@ -100,8 +107,8 @@ initial_state = "idle"
 
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("4_2wyri")
-max_health = 10
-current_health = 10
+max_health = 30
+current_health = 30
 defense = 0
 metadata/_custom_type_script = "uid://d02olb4wb0hhx"
 
@@ -111,14 +118,26 @@ acceleration = 210.0
 decceleration = 600.0
 max_velocity = Vector2(60, 60)
 
-[node name="AgentSprite" type="Sprite2D" parent="."]
-modulate = Color(0.47975576, 0.82144654, 0.90973824, 1)
+[node name="ShadowComponent" type="Sprite2D" parent="."]
+modulate = Color(0.05882353, 0, 0.11764706, 0.1764706)
 texture_filter = 1
+position = Vector2(-0.5, 0.5)
+scale = Vector2(0.0703125, 0.040625)
+texture = ExtResource("2_n8wqh")
+script = ExtResource("3_2wyri")
+
+[node name="AgentSprite" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+modulate = Color(0.47975576, 0.82144654, 0.90973824, 1)
+y_sort_enabled = true
+texture_filter = 1
+material = SubResource("ShaderMaterial_isa54")
 texture = ExtResource("6_isa54")
 offset = Vector2(0, -6)
 hframes = 8
 vframes = 2
 
 [node name="AgentCollider" type="CollisionShape2D" parent="."]
-position = Vector2(0, -5)
+visible = false
+position = Vector2(0, -4)
 shape = SubResource("CapsuleShape2D_v6xq5")

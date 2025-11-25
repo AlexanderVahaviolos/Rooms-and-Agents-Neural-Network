@@ -1,9 +1,8 @@
-extends RefCounted
+extends Node
 
 enum Detectables {
 	EXIT,
 	FIRE,
 	SPIKE,
-	ARROW,
-	LAZER
+	ARROW
 }

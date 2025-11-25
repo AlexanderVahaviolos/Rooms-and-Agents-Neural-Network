@@ -1,7 +1,9 @@
-[gd_scene load_steps=7 format=3 uid="uid://5vc2smd5iind"]
+[gd_scene load_steps=9 format=3 uid="uid://5vc2smd5iind"]
 
-[ext_resource type="Script" uid="uid://b2cxmxx6atu31" path="res://Components/Hazards/FireComponent.gd" id="1_xm34u"]
+[ext_resource type="Script" uid="uid://b2cxmxx6atu31" path="res://Components/Hazards/FireHazard.gd" id="1_xm34u"]
 [ext_resource type="Texture2D" uid="uid://gax01mdt3kmc" path="res://Sprites/hazards.png" id="2_3frdq"]
+[ext_resource type="Texture2D" uid="uid://bxdmsflstldvn" path="res://Sprites/Shapes/circle.png" id="2_xv73o"]
+[ext_resource type="Script" uid="uid://cbjacdx3op603" path="res://Components/ShadowComponent.gd" id="3_xv4nc"]
 
 [sub_resource type="Animation" id="Animation_xv73o"]
 length = 0.001
@@ -16,6 +18,18 @@ tracks/0/keys = {
 "transitions": PackedFloat32Array(1),
 "update": 1,
 "values": [Vector2i(0, 1)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ShadowComponent:position")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(-0.5, 6)]
 }
 
 [sub_resource type="Animation" id="Animation_b0pwb"]
@@ -35,6 +49,18 @@ tracks/0/keys = {
 "update": 1,
 "values": [Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1)]
 }
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ShadowComponent:position")
+tracks/1/interp = 0
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.15106328, 0.44998932),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector2(-0.5, 6), Vector2(0.5, 6), Vector2(-0.5, 6)]
+}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_xv4nc"]
 _data = {
@@ -43,21 +69,29 @@ _data = {
 }
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_b0pwb"]
-radius = 5.0
+radius = 7.0
 
 [node name="FireHazard" type="Area2D" node_paths=PackedStringArray("FireAnimation")]
 collision_layer = 2
 script = ExtResource("1_xm34u")
 FireAnimation = NodePath("AnimationPlayer")
-ticks = null
-damage_dealt = 2
-knockback_force = 50.0
+damage = 15
+knockback_force = 200.0
 metadata/_custom_type_script = "uid://b2cxmxx6atu31"
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 libraries = {
 &"": SubResource("AnimationLibrary_xv4nc")
 }
+
+[node name="ShadowComponent" type="Sprite2D" parent="."]
+modulate = Color(0.05882353, 0, 0.11764706, 0.1764706)
+show_behind_parent = true
+position = Vector2(-0.5, 6)
+scale = Vector2(0.085, 0.04)
+texture = ExtResource("2_xv73o")
+script = ExtResource("3_xv4nc")
+metadata/_custom_type_script = "uid://cbjacdx3op603"
 
 [node name="HazardSprite" type="Sprite2D" parent="."]
 texture_filter = 1
@@ -67,5 +101,6 @@ vframes = 4
 frame = 4
 
 [node name="HazardCollider" type="CollisionShape2D" parent="."]
-position = Vector2(0, 2)
+visible = false
+position = Vector2(0, 1)
 shape = SubResource("CircleShape2D_b0pwb")

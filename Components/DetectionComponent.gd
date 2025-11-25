@@ -1,16 +1,17 @@
 class_name DetectionComponent
 extends Area2D
 
-signal targetsUpdated(target: Dictionary[String, Dictionary])
+signal target_entered(target: Area2D)
+signal target_exited(target: Area2D)
 
 @export var Respondee: Node
 @export_range(0.0, 1.0, 0.1) var PayloadSendTime: float
-@onready var DetectionArea: CollisionShape2D = $CollisionShape2D
+@onready var DetectionArea: CollisionPolygon2D = $DetectionShape
 
 var current_direction: Vector2 = Vector2(1, 0)
 var next_direction: Vector2
 
-var targets: Dictionary[String, Dictionary]
+var targets: Dictionary[String, Area2D] = {}
 
 func _ready() -> void:
 	connect("area_entered", Callable(self, "_on_area_entered"))
@@ -18,17 +19,8 @@ func _ready() -> void:
 	
 	collision_layer = 0
 	#collision_mask << 2
-
-func _to_string() -> String:
-	var line: String = ""
-	for value in targets.values():
-		line += str(value)
-	return line	
 	
-func _physics_process(_delta: float) -> void:	
-	for target in targets.values():
-			target["distance"] = Respondee.global_position - target["instance"].global_position
-		
+func _physics_process(_delta: float) -> void:			
 	if Respondee.movement_component.direction != Vector2.ZERO:
 		next_direction = Respondee.movement_component.direction
 	if next_direction != current_direction:
@@ -36,21 +28,8 @@ func _physics_process(_delta: float) -> void:
 		rotation = atan2(next_direction.y, next_direction.x)
 
 func _on_area_entered(area: Area2D) -> void:
-	#print(area)
-	if area is Exit:
-		targets[area.name] = {
-			"instance": area,
-			"bounds": area.shape_bounds,
-			"distance": Respondee.global_position - area.global_position
-		}	
-	elif area is Hazard:
-		targets[area.name] = {
-			"instance": area,
-			"hazard": area.hazard_type,
-			"bounds": area.hazard_bounds,
-			"distance": Respondee.global_position - area.global_position
-		}
-	emit_signal("targetsUpdated", targets)
+	targets[area.name] = area
+	emit_signal("target_entered", area)
 
 func _on_area_exited(area: Area2D) -> void:
-	targets.erase(area.name)
+	emit_signal("target_exited", area)

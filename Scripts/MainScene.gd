@@ -12,9 +12,6 @@ var current_agent_count: int = start_agent_count
 @onready var RoomContainer: Node2D = $RoomContainer
 @onready var AgentContainer: Node2D = $AgentContainer
 
-@onready var GenerationLabel: Label = $SimulationCamera/SimulationUI/Generation
-@onready var ScoreLabel: Label = $SimulationCamera/SimulationUI/Score
-
 @export_category("DEBUG")
 @export var ControllableAgentScene: PackedScene
 @export var enable_character: bool = false
@@ -26,21 +23,32 @@ var exit_location: Vector2i
 var agents: Dictionary[String, Agent] = {}
 var dead_agents: Dictionary[String, Agent] = {} # might not need
 var complete_agents: Dictionary[String, Agent] = {} # complete as finished maze
+var agent_neurons: int = 0
 
 var best_agent: Agent = null
 var generation: int = 1
 
+var check_score_timer: float = 0.0
+const score_timer_limit: float = 0.25
+var prev_top_score_agent: Agent
+var prev_lowest_score_agent: Agent
+
 func _ready() -> void:
+	%SkipButton.connect("pressed", Callable(self, "_next_generation"))
 	randomize()
 	screen_size = get_viewport().get_visible_rect().size
 	_setup()
 
 # Just an agent size check
-func _physics_process(_delta: float) -> void:
-	if agents.size() > 0 and !enable_character:
+func _physics_process(delta: float) -> void:
+	check_score_timer += delta
+	if check_score_timer >= score_timer_limit:
+		check_score_timer = 0.0
+		_outline_agents()
+	
+	if agents.size() > 0 and !enable_character and %LoopButton.toggle_mode:
 		pass
-	elif agents.size() <= 0 and !enable_character:
-		generation += 1
+	elif agents.size() <= 0 and !enable_character and %LoopButton.toggle_mode:
 		_next_generation()
 		
 func _setup() -> void:
@@ -52,21 +60,37 @@ func _setup() -> void:
 	if !enable_character:
 		for i in range(start_agent_count):
 			var agent_instance = AgentScene.instantiate()
-			agent_instance.name = str(generation) + "-" + str(i)
+			agent_instance.id = i
+			agent_instance.name = str(generation) + "-" + str(agent_instance.id)
+			
+			# Getting Agent Information
+			if i == 1:
+				agent_neurons = 7 + agent_instance.memory_slots # 7 is the current agent inputs
+			
 			agent_instance.connect("send_instance", Callable(self, "_on_send_agent_instance"))
+			agent_instance.add_to_group("Agents")
 			AgentContainer.add_child(agent_instance)
 			agents[agent_instance.name] = agent_instance
 	else:
 		var agent_instance = ControllableAgentScene.instantiate()
 		AgentContainer.add_child(agent_instance)
 
-	GenerationLabel.text = "Generation " + str(generation)
-	ScoreLabel.text = "Previous Top Score: 0"
+	%GenerationLabel.text = "Generation " + str(generation)
+	%ScoreLabel.text = "Previous Top Score: 0"
 
 func _next_generation() -> void:
+	generation += 1
+	
 	var performant_agents: Array[Agent]
 	var dead_performant_agents: Array[Agent]
 	var remainder: int = 0
+	
+	if %SkipButton.perform_skip:
+		print("GOING TO: GENERATION ", generation)
+		%SkipButton.perform_skip = false
+		dead_agents = agents.duplicate()
+		agents.clear()
+	
 	if generation != 1: # skipping first generation
 		# getting the top 10 best performing agents
 		# should also get best agent as a guarantee in next gen
@@ -74,7 +98,7 @@ func _next_generation() -> void:
 		
 		# Check if there are completed agents
 		if complete_agents.size() > 0:
-			performant_agents = complete_agents.values()
+			performant_agents = complete_agents.values().duplicate()
 			performant_agents.sort_custom(func(a, b):
 				return a.score > b.score
 			)
@@ -87,26 +111,18 @@ func _next_generation() -> void:
 		else: 
 			# gets the instances from the dead agents and how many to append
 			# works whether there are a range 0 - 9 complete agents 
-			dead_performant_agents = dead_agents.values()
-			remainder = 10 - complete_agents.size()
-				
-			# first section for complete agents
-			performant_agents = performant_agents.slice(0, complete_agents.size())
-			# second section for dead agents
+			dead_performant_agents = dead_agents.values().duplicate()
+			remainder = 10 - complete_agents.size() 
+
 			dead_performant_agents.sort_custom(func(a, b):
 				return a.score > b.score
-			)
-			# check if this is appropriate (like do it work)
-			performant_agents.append(dead_performant_agents.slice(0, remainder))
+			)				
+			performant_agents.append_array(dead_performant_agents.slice(0, remainder))
+			print("ye i appended these bums, ", dead_performant_agents.slice(0, remainder))
 		
 		best_agent = performant_agents[0]
 		# score display
 		print("generation " + str(generation) + " score: " + str(best_agent.score))
-
-			
-		# going to switch from deleting and then recreating, to reallocating the values
-		# into the currently pre-existing instances as to not increase cost for each generation
-		# so will need a setup function for both the maze and agents for this
 	
 	# add a weight ratio so that if say the 3rd agent did way better than the 
 	# 4th agent, then it will be weighted so that the 3rd agent gets picked more
@@ -115,19 +131,84 @@ func _next_generation() -> void:
 	for agent in AgentContainer.get_children():
 		agent.brain = mutate(performant_agents[randi_range(0, 9)].brain)
 
-func _on_agent_send_instance(agent: Agent) -> void:
+	# Update UI
+	%GenerationLabel.text = "Generation " + str(generation)
+	%ScoreLabel.text = "Previous Top Score: " + str("%.2f" % best_agent.score)
+
+	# then add them back to the regular agent list and reset them
+	_reset_agents(false)
+	
+func _reset_agents(all_reset: bool) -> void:
+	var all_agents = complete_agents.merged(dead_agents)
+	
+	if all_reset: # True reset, restarts the simulation
+		pass
+	else: # Post generation reset, called after each generation
+		if agents.size() > 0:
+			push_error("Agent Array should be zero, yet it is: ", agents.size())
+		else:
+			for key in all_agents.keys():
+				var agent_instance = all_agents[key]
+				agent_instance.name = str(generation) + "-" + str(agent_instance.id)
+				key = agent_instance.name
+				
+				agent_instance.reset_agent()
+			
+				agents[key] = agent_instance
+				
+	complete_agents.clear()
+	dead_agents.clear()
+
+func _outline_agents() -> void:
+	var current_agents: Array = agents.values()
+	
+	if current_agents.is_empty():
+		return
+		
+	current_agents.sort_custom(func(a, b):
+		return a.score > b.score
+	)
+			
+	var top_score_agent = current_agents[0]
+	var lowest_score_agent = current_agents[-1]
+	
+	if prev_top_score_agent: 
+		prev_top_score_agent.agent_sprite.material.set_shader_parameter(
+			"outline_color", Color.from_rgba8(0, 0, 0, 0)
+		)
+	if prev_lowest_score_agent:
+		prev_lowest_score_agent.agent_sprite.material.set_shader_parameter(
+			"outline_color", Color.from_rgba8(0, 0, 0, 0)
+		)	
+
+	top_score_agent.agent_sprite.material.set_shader_parameter(
+		"outline_color", Color.from_rgba8(125, 255, 125, 185)
+		)
+	lowest_score_agent.agent_sprite.material.set_shader_parameter(
+		"outline_color", Color.from_rgba8(255, 100, 100, 185)
+		)		
+		
+	prev_top_score_agent = top_score_agent
+	prev_lowest_score_agent = lowest_score_agent
+
+func _on_send_agent_instance(agent: Agent) -> void:
 	agents.erase(agent.name)
-	if agent.died:
+	
+	agent.set_physics_process(false)
+	agent.visible = false
+	
+	if agent.death_flag:
 		dead_agents[agent.name] = agent
-	elif agent.completed:
+	elif agent.completed_flag:
 		complete_agents[agent.name] = agent
+		print(complete_agents)
 
 func mutate(parent_net: Net) -> Net:
 	var mutation: Net = Net.new()
 	
 	for i in range(parent_net.layers.size()):
 		for j in range(parent_net.layers[i].neurons.size()):
-			for k in range(6): # TEMP, SHOULD BE DYNAMIC TO HOW MANY ACTUAL INPUTS THERE ARE
+			for k in range(parent_net.layers[i].neurons[j].weights.size()): 
 				if randf() <= mutation_rate:
 					mutation.layers[i].neurons[j].weights.append(randf_range(-1, 1))
 				else:

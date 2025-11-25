@@ -1,0 +1,33 @@
+[gd_scene load_steps=5 format=3 uid="uid://5btpntq3fm6l"]
+
+[ext_resource type="Texture2D" uid="uid://gax01mdt3kmc" path="res://Sprites/hazards.png" id="1_2u0bd"]
+[ext_resource type="Script" uid="uid://baouwukty34nu" path="res://Components/Hazards/ArrowHazard.gd" id="1_40cdi"]
+[ext_resource type="Script" uid="uid://csj7q8fitqvrx" path="res://Components/MovementComponent.gd" id="3_xxsqv"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_h5x2m"]
+radius = 1.0
+height = 4.0
+
+[node name="Arrow" type="Area2D"]
+collision_layer = 2
+collision_mask = 9
+script = ExtResource("1_40cdi")
+knockback_force = 50.0
+
+[node name="ArrowSprite" type="Sprite2D" parent="."]
+texture = ExtResource("1_2u0bd")
+offset = Vector2(0, 0.5)
+hframes = 4
+vframes = 4
+frame = 10
+
+[node name="ArrowCollider" type="CollisionShape2D" parent="."]
+position = Vector2(5, 0)
+rotation = 1.5707964
+shape = SubResource("CapsuleShape2D_h5x2m")
+
+[node name="MovementComponent" type="Node" parent="."]
+script = ExtResource("3_xxsqv")
+acceleration = 250.0
+max_velocity = Vector2(90, 90)
+metadata/_custom_type_script = "uid://csj7q8fitqvrx"

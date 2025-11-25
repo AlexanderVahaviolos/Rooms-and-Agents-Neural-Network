@@ -13,11 +13,9 @@ func update(entity: Node2D, _delta) -> void:
 func physics_update(entity: Node2D, delta) -> void:
 	var move_intent = entity.move_intent
 	
-	if move_intent > 0.1:
-		entity.movement_component.accelerate(delta)
-	elif move_intent < -0.1:
-		entity.movement_component.brake(delta)
-	else:
-		entity.movement_component.decelerate(delta)
+	if move_intent >= 0.0:
+		entity.movement_component.accelerate(delta * max(move_intent, 0.1))
+	elif move_intent:
+		entity.movement_component.brake(delta * abs(move_intent))
 
 	entity.velocity = entity.movement_component.velocity

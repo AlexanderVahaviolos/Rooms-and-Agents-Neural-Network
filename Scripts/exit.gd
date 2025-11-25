@@ -10,7 +10,7 @@ func _ready() -> void:
 	shape_bounds = collision_shape.get_rect()
 	
 func _on_body_entered(body: Node2D) -> void:
-	body.score += 100
+	body.score += 50
 	print(body.name, " has completed the maze. | SCORE: ", body.score) 
-	body.set_physics_process(false)
-	body.visible = false
+	body.completed_flag = true
+	body.send_instance.emit(body)

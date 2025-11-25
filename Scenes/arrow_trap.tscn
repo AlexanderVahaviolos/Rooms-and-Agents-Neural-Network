@@ -1,0 +1,50 @@
+[gd_scene load_steps=5 format=3 uid="uid://b7oqqvg6mtugp"]
+
+[ext_resource type="Script" uid="uid://cs72xnrimpnx2" path="res://Scripts/arrow_trap.gd" id="1_e73hp"]
+[ext_resource type="Texture2D" uid="uid://gax01mdt3kmc" path="res://Sprites/hazards.png" id="1_ys5pu"]
+[ext_resource type="PackedScene" uid="uid://5btpntq3fm6l" path="res://Scenes/arrow.tscn" id="3_sg3mx"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_e73hp"]
+radius = 6.0
+
+[node name="ArrowTrap" type="StaticBody2D"]
+collision_layer = 8
+script = ExtResource("1_e73hp")
+
+[node name="TrapSprite" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+texture = ExtResource("1_ys5pu")
+hframes = 4
+vframes = 4
+frame = 9
+
+[node name="TrapCollider" type="CollisionShape2D" parent="."]
+visible = false
+shape = SubResource("CircleShape2D_e73hp")
+
+[node name="ShootTimer" type="Timer" parent="."]
+unique_name_in_owner = true
+wait_time = 3.0
+autostart = true
+
+[node name="ArrowContainer" type="Node2D" parent="."]
+
+[node name="Arrow" parent="ArrowContainer" instance=ExtResource("3_sg3mx")]
+visible = false
+position = Vector2(5, 0)
+knockback_force = 0.0
+
+[node name="Arrow2" parent="ArrowContainer" instance=ExtResource("3_sg3mx")]
+visible = false
+position = Vector2(5, 0)
+knockback_force = 0.0
+
+[node name="Arrow3" parent="ArrowContainer" instance=ExtResource("3_sg3mx")]
+visible = false
+position = Vector2(5, 0)
+knockback_force = 0.0
+
+[node name="Arrow4" parent="ArrowContainer" instance=ExtResource("3_sg3mx")]
+visible = false
+position = Vector2(5, 0)
+knockback_force = 0.0

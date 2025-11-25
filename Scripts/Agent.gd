@@ -3,6 +3,7 @@ class_name Agent
 
 signal send_instance(agent: Agent)
 
+@onready var agent_sprite: Sprite2D = $AgentSprite
 @onready var state_machine: StateMachine = $StateMachine
 @onready var animation_player: AnimationPlayer = $AgentAnimator
 
@@ -15,8 +16,9 @@ var iframes: float = 0
 var knockback_enabled: bool = false
 
 @export_category("Detection Parameters")
-@export var max_hazards: int = 4
-@export var max_exits: int = 2
+@export_range(4, 10, 1) var hazard_memory: int = 4
+@export_range(1, 3, 1) var exit_memory: int = 2
+@export_range(100, 300, 10) var memory_decay_distance: float = 100.0
 
 var flip_threshold: float = 0.1
 
@@ -33,24 +35,94 @@ var states: Dictionary = {
 # Neural Network Variables
 var brain: Net = Net.new()
 var score: float = 0.0
-var dead: bool = false
-var complete: bool = false
+var time_alive: float = 0.0
+var id: int
+var initialized: bool = false
 
+# --- STAGNATION CHECKING ---
+var stagnation_timer: float = 0.0
+var last_significant_score: float = 0.0
+
+# --- CIRCLE CHECKING ---
+var circle_timer: float = 0.0
+var total_path_length: float = 0.0
+const MIN_PATH_LENGTH: float = 100.0 # ignoring very short early runs
+const EFFICIENCY_THRESHOLD: float = 0.15 # <15% effective progress
+const CIRCLE_TIME_LIMIT: float = 5.0
+
+# --- WALL CHECKING ---
+var wall_touch_counter: int = 0
+var wall_flag: bool = false
+var stuck_timer: float = 0.0
+
+# --- IDLE CHECKING ---
+var idle_time: float = 0.0
+
+# --- AGENT FINAL CONDITIONS --- 
+var death_flag: bool = false
+var completed_flag: bool = false
+
+var neuron_inputs: Array
 var agent_inputs: Array
-var target_inputs: Array
-var target_input_size: int = max_hazards * 4 + max_exits * 4
-var neural_inputs: Array
-# Agent Movement
+var memory_inputs: Array
+
+var memory_dict: Dictionary[String, Dictionary]
+var exit_dict: Dictionary[String, Dictionary]
+var hazard_dict: Dictionary[String, Dictionary]
+
+var memory_slots: int = hazard_memory * 4 + exit_memory * 4
 
 # initialized for now
 var start_position: Vector2i = Vector2i(randi_range(0, 25), randi_range(0, 25))
 
-var dir: Vector2
+var direction: Vector2 = Vector2(randf_range(-1, 1), randf_range(-1, 1))
 var new_direction: Vector2
 var move_intent: float
 
 var prev_position: Vector2
 var prev_velocity: Vector2
+
+func reset_agent() -> void:
+	score = 0.0
+	time_alive = 0.0
+	
+	# --- STAGNATION CHECKING ---
+	stagnation_timer = 0.0
+	last_significant_score = 0.0
+
+	# --- CIRCLE CHECKING ---
+	circle_timer = 0.0
+	total_path_length = 0.0
+	
+	# --- WALL CHECKING ---
+	wall_touch_counter = 0
+	wall_flag = false
+	stuck_timer = 0.0
+
+	# --- IDLE CHECKING ---
+	idle_time = 0.0
+
+	# --- AGENT FINAL CONDITIONS --- 
+	death_flag = false
+	completed_flag = false
+	
+	set_physics_process(true)
+	visible = true
+	
+	neuron_inputs.clear()
+	agent_inputs.clear()
+	memory_inputs.clear()
+	
+	memory_dict.clear()
+	hazard_dict.clear()
+	exit_dict.clear()
+	
+	start_position = Vector2i(randi_range(0, 25), randi_range(0, 25))
+	direction = Vector2(randf_range(-1, 1), randf_range(-1, 1))
+	new_direction = direction
+	move_intent = 0.0
+	
+	_ready()
 
 func _ready() -> void:
 	global_position = start_position
@@ -58,42 +130,59 @@ func _ready() -> void:
 	prev_position = global_position
 	prev_velocity = velocity
 	
-	target_inputs.resize(target_input_size)
-	target_inputs.fill(0.0)
+	memory_inputs.resize(memory_slots)
+	memory_inputs.fill(0.0)
 	
-	health_component.connect("damaged", Callable(self, "_on_damaged"))
-	health_component.connect("died", Callable(self, "_on_death"))
-	detection_component.connect("targetsUpdated", Callable(self, "get_inputs_from_targets"))
-	state_machine.states = self.states
+	if !initialized: # Run through only once
+		initialized = true
+		health_component.connect("damaged", Callable(self, "_on_damaged"))
+		health_component.connect("died", Callable(self, "_on_death"))
+		detection_component.connect("target_entered", Callable(self, "_update_memory"))
+		state_machine.states = self.states
 	
-	for state in states.values():
-		state_machine.add_child(state)
-	state_machine.start()
-	
-
+		for state in states.values():
+			state_machine.add_child(state)
+		state_machine.start()
+		
+		agent_sprite.material = agent_sprite.material.duplicate()
 func _physics_process(delta: float) -> void:
-	if not dead:
-		_calculate_new_score(delta)
+	if not death_flag:
+		for key in memory_dict.keys():
+			_update_memory(detection_component.targets[key])
+		_check_agent_progress(delta)
+	else:
+		send_instance.emit(self)
+		
+	var normalized_pos: Vector2 = global_position / Vector2(WindowManager.screen_size)
+	var normalized_vel: Vector2 = velocity / movement_component.max_velocity
+	var wall_sensor_value: float
 	
+	if is_on_wall() and !wall_flag:
+		wall_sensor_value = 1.0
+		wall_touch_counter += 1
+		wall_flag = true
+	elif !is_on_wall() and wall_flag:
+		wall_sensor_value = 0.0
+		wall_flag = false
+		
 	agent_inputs = [
-		global_position.x, global_position.y,
-		velocity.x, velocity.y,
-		dir.x, dir.y		
+		normalized_pos.x, normalized_pos.y,
+		normalized_vel.x, normalized_vel.y,
+		direction.x, direction.y,
+		wall_sensor_value
 	]
 	
-	neural_inputs = agent_inputs.duplicate()
-	neural_inputs.append_array(target_inputs)
+	neuron_inputs = agent_inputs.duplicate()
+	neuron_inputs.append_array(memory_inputs)
 	
-	var output = brain.predict([global_position.x, global_position.y, 
-							   velocity.x, velocity.y, 
-							   dir.x, dir.y])
-	
-	new_direction = output[0]
+	var output = brain.predict(neuron_inputs)
+	var turn_angle = output[0] * 5.0 # radians/sec
+	new_direction = direction.rotated(turn_angle * delta).normalized()
 	move_intent = output[1]
 	
 	if new_direction != movement_component.direction:
 		movement_component.direction = new_direction
-	dir = movement_component.direction
+	direction = movement_component.direction
 
 	if movement_component.direction.x > flip_threshold: # if looking right
 		$AgentSprite.scale.x = 1.0
@@ -104,75 +193,159 @@ func _physics_process(delta: float) -> void:
 		iframes -= delta
 	move_and_slide()
 
-func _calculate_new_score(delta: float) -> void:
-	var dist_moved = global_position.distance_to(prev_position)
-	var vel_aligned = velocity.normalized().dot(dir)
+func _update_memory(target: Area2D) -> void:
+	var dir: Vector2 = (target.global_position - global_position).normalized()
+	var dist: float = dir.length()
 	
-	# Base reward for moving
+	var dict_ref: Dictionary = {}
+	var mem_limit: int
+	
+	var key = target.name
+	
+	if target is Hazard:
+		dict_ref = hazard_dict
+		mem_limit = hazard_memory
+	elif target is Exit:
+		dict_ref = exit_dict
+		mem_limit = exit_memory
+	else:
+		push_error("Unknown target ", key)
+		return
+		
+	dict_ref[key] = {
+		"direction": dir,
+		"distance": dist
+	}
+	
+	if dict_ref[key]["distance"] > memory_decay_distance and dict_ref == hazard_dict:
+		dict_ref.erase(key)
+		detection_component.targets.erase(key)
+		_build_memory_inputs()
+	
+	if dict_ref.size() > mem_limit:
+		var keys = dict_ref.keys()
+		keys.sort_custom(func(a, b):
+			return dict_ref[a]["distance"] < dict_ref[b]["distance"]
+		)
+		
+		for i in range(mem_limit, keys.size()):
+			dict_ref.erase(keys[i])
+			
+	_build_memory_inputs()
+	
+func _build_memory_inputs() -> void:
+	var inputs: Array[float] = []
+	
+	var append_targets = func(dict: Dictionary, type_value: float):
+		for key in dict.keys():
+			var d = dict[key]
+			var dir_vec = d["direction"].normalized()
+			var dist_norm = clamp(d["distance"] / memory_decay_distance, 0.0, 1.0)
+			inputs.append_array([type_value, dir_vec.x, dir_vec.y, 1.0 - dist_norm])
+			
+	append_targets.call(hazard_dict, 2.0)
+	append_targets.call(exit_dict, 1.0)
+	
+	# Padding to make it a fixed size
+	var remaining = (hazard_memory + exit_memory) - (hazard_dict.size() + exit_dict.size())
+	for i in range(remaining):
+		inputs.append_array([0.0, 0.0, 0.0, 0.0])
+	
+	memory_inputs = inputs
+
+func _check_agent_progress(delta: float) -> void:
+	time_alive += delta
+	
+	var dist_moved = global_position.distance_to(prev_position)
+	var net_displacement = global_position.distance_to(start_position)
+	var vel_aligned = velocity.normalized().dot(direction)
+
+	
+	# Movement / Alignment Rewards
 	if dist_moved > 0.0:
 		score += dist_moved * 0.1
-		
-	# Alignment reward
 	if vel_aligned > 0.7:
 		score += 0.05
 	else:
 		score -= 0.02
 	
 	# Penalty for being Idle 
-	if velocity.length() < 1.0: # and certain wait trap not in range
+	if velocity.length() < 1.0:
 		score -= delta * 0.1
 	
-	# if trap in targets and distance is sufficient:
-	# +score
+	if exit_dict.size() > 0:
+		score -= 0.06
 	
-	# Lifetime bonus
-	score += delta * 0.01
+	# ------ KILL CHECKS --------
+	
+	# OVERALL JUST BAD CHECK
+	if score < -50:
+		death_flag = true
+		print("Agent ", name, " died because they were just bad")
+		return
+	
+	# CIRCLE CHECK
+	total_path_length += dist_moved
+	var efficiency = (net_displacement / max(total_path_length, 0.001))
+	
+	if total_path_length > MIN_PATH_LENGTH and efficiency < EFFICIENCY_THRESHOLD:
+		circle_timer += delta
+	else:
+		circle_timer = 0.0
+	
+	if circle_timer > CIRCLE_TIME_LIMIT:
+		death_flag = true
+		print("Agent ", name, " died because they were circling around")
+		return
+		
+	# TOUCHED THE WALL TOO MANY TIMES CHECK
+	if wall_touch_counter > 4:
+		death_flag = true
+		print("Agent ", name, " died because they liked walls too much")
+		return
+	
+	# PROGRESS CHECK
+	var progress = score - last_significant_score
+
+	if progress > 0.03:
+		stagnation_timer = 0.0
+		last_significant_score = score
+	else:
+		stagnation_timer += delta
+
+	if stagnation_timer > 5.0: # 5 seconds of no real score gain
+		death_flag = true
+		print("Agent ", name, " died because they stagnated for too long")
+		return
+	
+	# STUCK ON WALL CHECK
+	if is_on_wall() and dist_moved < 1.0:
+		stuck_timer += delta
+	else:
+		stuck_timer = 0.0
+	
+	if stuck_timer > 2.0:
+		death_flag = true
+		print("Agent ", name, " died because they got stuck on a wall")
+		return
+	
+	# NO MOVEMENT CHECK
+	if dist_moved < 1.0 and velocity.length() < 2.0: # and if no arrow trap in range
+		idle_time += delta
+		if idle_time > 5.0:
+			death_flag = true
+			print("Agent ", name, " died because they didn't move enough")
+			return
+	else:
+		idle_time = 0.0
+	
+	# ---------------------------
 	
 	prev_position = global_position
 	prev_velocity = velocity
-
-func get_inputs_from_targets(targets: Dictionary[String, Dictionary]) -> void:
-	var inputs: Array = []
-	var hazards: Array = []
-	var exits: Array = []
+	#print(score)	
 	
-	for k in targets.keys():
-		var t = targets[k]
-		if t["instance"] is Exit:
-			exits.append(t)
-		elif t["instance"] is Hazard:
-			hazards.append(t)
+func _on_collision(area: Area2D) -> void:
+	print(area)
 	
-	# sorting hazards by distance	
-	hazards.sort_custom(func(a, b):
-		return a["distance"].length() < b["distance"].length()
-		)
 		
-	for h in hazards.slice(0, max_hazards):
-		var dist: float = h["distance"].length()
-		var dir: Vector2 = h["distance"].normalized()
-		var detect_type = float(h["hazard"])
-		inputs.append_array([detect_type, dir.x, dir.y, dist])
-	
-	for e in exits.slice(0, max_exits):
-		var dist: float = e["distance"].length()
-		var dir: Vector2 = e["distance"].normalized()
-		var detect_type = float(SimulationManager.Detectables.EXIT)
-		inputs.append_array([detect_type, dir.x, dir.y, dist])
-	
-	while inputs.size() < target_input_size:
-		inputs.append(0.0)
-		
-	target_inputs = inputs
-			
-func _on_collision(_area: Area2D) -> void:
-	if not dead or not complete:
-		send_instance.emit(self)
-		
-		# check what the agent has collided with
-		
-
-# honestly it should become dead if the agent's score is like below a certain
-# threshold, maybe like it just dies if their score is below like
-# average / 1.5 every like 20-30 seconds, time might be dynamic based on like
-# tiles from enterance to exit tile + avg score gain / prev_gen_best_score
