@@ -5,6 +5,7 @@ extends Hazard
 var hazard_bounds: Rect2i
 
 func _ready() -> void:
+	name = "Spike_Hazard"
 	hazard_type = SimulationManager.Detectables.FIRE
 	connect("body_entered", Callable(self, "_on_hazard_enter"))
 	
@@ -19,6 +20,5 @@ func _on_hazard_enter(body: Node2D) -> void:
 		body.health_component.apply_damage(damage)
 		body.score -= 40
 		if knockback_force > 0:
-			body.knockback_enabled = true
 			#print("APPLIED ", knockback_force, " IN ", knockback_direction)
 			body.velocity = knockback_force * knockback_direction

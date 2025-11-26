@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://c0iktnuw2tq5e"]
+[gd_scene load_steps=12 format=3 uid="uid://c0iktnuw2tq5e"]
 
 [ext_resource type="Script" uid="uid://bclmhuthf1wn7" path="res://Scripts/controllable_agent.gd" id="1_y4x24"]
 [ext_resource type="Script" uid="uid://dkha4eqw0qmoa" path="res://Components/DetectionComponent.gd" id="2_bbcp7"]
@@ -6,9 +6,6 @@
 [ext_resource type="Script" uid="uid://byd3700ubxftj" path="res://Scripts/States/state_machine.gd" id="2_qbfg8"]
 [ext_resource type="Script" uid="uid://csj7q8fitqvrx" path="res://Components/MovementComponent.gd" id="2_ywuk8"]
 [ext_resource type="Texture2D" uid="uid://duyhklxq2o5r7" path="res://Sprites/agentSpritesheet.png" id="4_q6esm"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_6dhqv"]
-size = Vector2(61, 34.25)
 
 [sub_resource type="Animation" id="Animation_qbfg8"]
 length = 0.001
@@ -68,26 +65,48 @@ _data = {
 &"move": SubResource("Animation_bbcp7")
 }
 
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_qbfg8"]
-radius = 4.0
-height = 12.0
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_bbcp7"]
+radius = 3.0
+height = 8.0
 
 [node name="ControllableAgent" type="CharacterBody2D"]
 collision_mask = 0
 motion_mode = 1
 script = ExtResource("1_y4x24")
-iframes_on_hit = 20
+iframes_on_hit = 15
+spin_testing = true
 
 [node name="DetectionComponent" type="Area2D" parent="." node_paths=PackedStringArray("Respondee")]
 collision_layer = 0
-collision_mask = 6
+collision_mask = 14
 script = ExtResource("2_bbcp7")
 Respondee = NodePath("..")
 PayloadSendTime = 0.1
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionComponent"]
-position = Vector2(24, 0)
-shape = SubResource("RectangleShape2D_6dhqv")
+[node name="DetectionShape" type="CollisionPolygon2D" parent="DetectionComponent"]
+polygon = PackedVector2Array(120, 90, -5, 15, -15, 0, -5, -15, 120, -90)
+
+[node name="Raycasts" type="Node2D" parent="DetectionComponent"]
+
+[node name="StaticDetector" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+target_position = Vector2(120, 0)
+collision_mask = 8
+
+[node name="StaticDetector2" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+target_position = Vector2(120, -90)
+collision_mask = 8
+
+[node name="StaticDetector3" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+target_position = Vector2(120, 90)
+collision_mask = 8
+
+[node name="StaticDetector4" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+target_position = Vector2(120, -45)
+collision_mask = 8
+
+[node name="StaticDetector5" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+target_position = Vector2(120, 45)
+collision_mask = 8
 
 [node name="AgentAnimator" type="AnimationPlayer" parent="."]
 libraries = {
@@ -120,5 +139,6 @@ hframes = 8
 vframes = 2
 
 [node name="AgentCollider" type="CollisionShape2D" parent="."]
-position = Vector2(0, -5)
-shape = SubResource("CapsuleShape2D_qbfg8")
+visible = false
+position = Vector2(0, -4)
+shape = SubResource("CapsuleShape2D_bbcp7")

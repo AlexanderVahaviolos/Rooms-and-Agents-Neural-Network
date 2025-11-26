@@ -30,7 +30,7 @@ func _physics_process(delta: float) -> void:
 		global_position += velocity * delta 
 
 func _on_hazard_enter(body: Node2D) -> void:
-	print("BODY ENTERED: ", body.name)
+	#print("BODY ENTERED: ", body.name)
 	if body is Hazard and body.iframes == 0:
 		var knockback_direction = body.movement_component.direction
 		#print("APPLIED ", damage_dealt, " DAMAGE")

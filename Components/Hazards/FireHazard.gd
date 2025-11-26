@@ -1,4 +1,5 @@
-class_name FireComponent extends Hazard
+class_name FireHazard 
+extends Hazard
 
 @export var FireAnimation: AnimationPlayer
 
@@ -6,6 +7,7 @@ class_name FireComponent extends Hazard
 var hazard_bounds: Rect2i
 
 func _ready() -> void:
+	name = "Fire_Hazard"
 	hazard_type = SimulationManager.Detectables.FIRE
 	connect("body_entered", Callable(self, "_on_hazard_enter"))
 	FireAnimation.play("fire")
@@ -21,6 +23,5 @@ func _on_hazard_enter(body: Node2D) -> void:
 		body.health_component.apply_damage(damage)
 		body.score -= 60
 		if knockback_force > 0:
-			body.knockback_enabled = true
 			#print("APPLIED ", knockback_force, " IN ", knockback_direction)
 			body.velocity = knockback_force * knockback_direction

@@ -13,7 +13,6 @@ signal send_instance(agent: Agent)
 
 @export var iframes_on_hit: int
 var iframes: float = 0
-var knockback_enabled: bool = false
 
 @export_category("Detection Parameters")
 @export_range(4, 10, 1) var hazard_memory: int = 4
@@ -50,6 +49,13 @@ const MIN_PATH_LENGTH: float = 100.0 # ignoring very short early runs
 const EFFICIENCY_THRESHOLD: float = 0.15 # <15% effective progress
 const CIRCLE_TIME_LIMIT: float = 5.0
 
+# --- SPINNING CHECKING ---
+var spin_timer: float = 0.0
+var prev_spin_angle: float = 0.0
+var total_spin_angle: float = 0.0
+const SPIN_THRESHOLD: float = TAU*2
+const SPIN_TIME_LIMIT: float = 5.0
+
 # --- WALL CHECKING ---
 var wall_touch_counter: int = 0
 var wall_flag: bool = false
@@ -62,8 +68,11 @@ var idle_time: float = 0.0
 var death_flag: bool = false
 var completed_flag: bool = false
 
+# Neuron inputs
 var neuron_inputs: Array
 var agent_inputs: Array
+var arrow_input: Array
+var wall_input: Array
 var memory_inputs: Array
 
 var memory_dict: Dictionary[String, Dictionary]
@@ -77,7 +86,10 @@ var start_position: Vector2i = Vector2i(randi_range(0, 25), randi_range(0, 25))
 
 var direction: Vector2 = Vector2(randf_range(-1, 1), randf_range(-1, 1))
 var new_direction: Vector2
+var turn_angle: float
 var move_intent: float
+
+var prev_exit_distances: Dictionary[String, float]
 
 var prev_position: Vector2
 var prev_velocity: Vector2
@@ -89,6 +101,11 @@ func reset_agent() -> void:
 	# --- STAGNATION CHECKING ---
 	stagnation_timer = 0.0
 	last_significant_score = 0.0
+
+	# --- SPINNING CHECKING ---
+	spin_timer = 0.0
+	prev_spin_angle = 0.0
+	total_spin_angle = 0.0
 
 	# --- CIRCLE CHECKING ---
 	circle_timer = 0.0
@@ -116,6 +133,7 @@ func reset_agent() -> void:
 	memory_dict.clear()
 	hazard_dict.clear()
 	exit_dict.clear()
+	prev_exit_distances.clear()
 	
 	start_position = Vector2i(randi_range(0, 25), randi_range(0, 25))
 	direction = Vector2(randf_range(-1, 1), randf_range(-1, 1))
@@ -127,13 +145,14 @@ func reset_agent() -> void:
 func _ready() -> void:
 	global_position = start_position
 	
+	prev_spin_angle = direction.angle()
 	prev_position = global_position
 	prev_velocity = velocity
 	
 	memory_inputs.resize(memory_slots)
 	memory_inputs.fill(0.0)
 	
-	if !initialized: # Run through only once
+	if !initialized: # Run through only once, as this function is also called by reset
 		initialized = true
 		health_component.connect("damaged", Callable(self, "_on_damaged"))
 		health_component.connect("died", Callable(self, "_on_death"))
@@ -145,6 +164,7 @@ func _ready() -> void:
 		state_machine.start()
 		
 		agent_sprite.material = agent_sprite.material.duplicate()
+		
 func _physics_process(delta: float) -> void:
 	if not death_flag:
 		for key in memory_dict.keys():
@@ -160,6 +180,7 @@ func _physics_process(delta: float) -> void:
 	if is_on_wall() and !wall_flag:
 		wall_sensor_value = 1.0
 		wall_touch_counter += 1
+		score -= 20
 		wall_flag = true
 	elif !is_on_wall() and wall_flag:
 		wall_sensor_value = 0.0
@@ -176,7 +197,7 @@ func _physics_process(delta: float) -> void:
 	neuron_inputs.append_array(memory_inputs)
 	
 	var output = brain.predict(neuron_inputs)
-	var turn_angle = output[0] * 5.0 # radians/sec
+	turn_angle = output[0] * 5.0 # radians/sec
 	new_direction = direction.rotated(turn_angle * delta).normalized()
 	move_intent = output[1]
 	
@@ -190,7 +211,7 @@ func _physics_process(delta: float) -> void:
 		$AgentSprite.scale.x = -1.0
 		
 	if iframes > 0:
-		iframes -= delta
+		iframes -= ceil(delta)
 	move_and_slide()
 
 func _update_memory(target: Area2D) -> void:
@@ -217,6 +238,9 @@ func _update_memory(target: Area2D) -> void:
 		"distance": dist
 	}
 	
+	if dict_ref == exit_dict:
+		prev_exit_distances[key] = dict_ref[key]["distance"]
+	
 	if dict_ref[key]["distance"] > memory_decay_distance and dict_ref == hazard_dict:
 		dict_ref.erase(key)
 		detection_component.targets.erase(key)
@@ -236,15 +260,17 @@ func _update_memory(target: Area2D) -> void:
 func _build_memory_inputs() -> void:
 	var inputs: Array[float] = []
 	
-	var append_targets = func(dict: Dictionary, type_value: float):
+	var append_targets = func(dict: Dictionary):
 		for key in dict.keys():
 			var d = dict[key]
+			var type_value: int = SimulationManager.node_to_type(d)
+			
 			var dir_vec = d["direction"].normalized()
 			var dist_norm = clamp(d["distance"] / memory_decay_distance, 0.0, 1.0)
 			inputs.append_array([type_value, dir_vec.x, dir_vec.y, 1.0 - dist_norm])
 			
-	append_targets.call(hazard_dict, 2.0)
-	append_targets.call(exit_dict, 1.0)
+	append_targets.call(hazard_dict, #remove parameter)
+	append_targets.call(exit_dict, SimulationManager.Detectables.EXIT)
 	
 	# Padding to make it a fixed size
 	var remaining = (hazard_memory + exit_memory) - (hazard_dict.size() + exit_dict.size())
@@ -260,7 +286,6 @@ func _check_agent_progress(delta: float) -> void:
 	var net_displacement = global_position.distance_to(start_position)
 	var vel_aligned = velocity.normalized().dot(direction)
 
-	
 	# Movement / Alignment Rewards
 	if dist_moved > 0.0:
 		score += dist_moved * 0.1
@@ -273,15 +298,57 @@ func _check_agent_progress(delta: float) -> void:
 	if velocity.length() < 1.0:
 		score -= delta * 0.1
 	
+	# Exit penalties and bonuses
 	if exit_dict.size() > 0:
-		score -= 0.06
-	
+		# Check if they are in line with the exit direction
+		for key in exit_dict.keys():
+			var exit_aligned = velocity.normalized().dot(exit_dict[key]["direction"])
+			var prev_exit_distance = prev_exit_distances[key]
+			
+			if exit_aligned > 0.7:
+				score += 0.30
+			else:
+				score -= 0.03
+			if exit_dict[key]["distance"] < prev_exit_distance:
+				score += 0.5
+			else:
+				score -= 0.05
+			prev_exit_distance = exit_dict[key]["distance"]
+			
 	# ------ KILL CHECKS --------
 	
-	# OVERALL JUST BAD CHECK
-	if score < -50:
+	# SPIN CHECK
+	var current_spin_angle = direction.angle()
+	var delta_rotation_rad = current_spin_angle - prev_spin_angle
+	
+	while delta_rotation_rad > PI:
+		delta_rotation_rad -= TAU
+	while delta_rotation_rad < -PI:
+		delta_rotation_rad += TAU
+	
+	total_spin_angle += abs(delta_rotation_rad)
+	prev_spin_angle = current_spin_angle
+	
+	if abs(total_spin_angle) > SPIN_THRESHOLD:
+		spin_timer += delta
+	else:
+		spin_timer = 0.0
+		
+	if total_spin_angle >= SPIN_THRESHOLD: # 2 full cycles
 		death_flag = true
-		print("Agent ", name, " died because they were just bad")
+		print("Agent ", name, " died because they spun too much")
+		return
+			
+	if spin_timer > 0.0:
+		score -= 3.0 * delta
+	elif spin_timer >= SPIN_TIME_LIMIT:
+		total_spin_angle = 0.0
+		spin_timer = 0.0
+	
+	# OVERALL JUST BAD CHECK
+	if score < -75:
+		death_flag = true
+		print("Agent ", name, " died because their score was too low")
 		return
 	
 	# CIRCLE CHECK
@@ -294,12 +361,14 @@ func _check_agent_progress(delta: float) -> void:
 		circle_timer = 0.0
 	
 	if circle_timer > CIRCLE_TIME_LIMIT:
+		score -= 50.0
 		death_flag = true
 		print("Agent ", name, " died because they were circling around")
 		return
 		
 	# TOUCHED THE WALL TOO MANY TIMES CHECK
 	if wall_touch_counter > 4:
+		# score is already deducted every wall touch
 		death_flag = true
 		print("Agent ", name, " died because they liked walls too much")
 		return
@@ -314,6 +383,7 @@ func _check_agent_progress(delta: float) -> void:
 		stagnation_timer += delta
 
 	if stagnation_timer > 5.0: # 5 seconds of no real score gain
+		score -= 30.0
 		death_flag = true
 		print("Agent ", name, " died because they stagnated for too long")
 		return
@@ -325,6 +395,7 @@ func _check_agent_progress(delta: float) -> void:
 		stuck_timer = 0.0
 	
 	if stuck_timer > 2.0:
+		score -= 40.0
 		death_flag = true
 		print("Agent ", name, " died because they got stuck on a wall")
 		return
@@ -333,6 +404,7 @@ func _check_agent_progress(delta: float) -> void:
 	if dist_moved < 1.0 and velocity.length() < 2.0: # and if no arrow trap in range
 		idle_time += delta
 		if idle_time > 5.0:
+			score -= 50.0
 			death_flag = true
 			print("Agent ", name, " died because they didn't move enough")
 			return
@@ -344,8 +416,10 @@ func _check_agent_progress(delta: float) -> void:
 	prev_position = global_position
 	prev_velocity = velocity
 	#print(score)	
+
+func _on_damaged(_damage: int) -> void:
+	state_machine.change_state("knockback")
 	
-func _on_collision(area: Area2D) -> void:
-	print(area)
-	
-		
+func _on_death() -> void:
+	score -= 15
+	death_flag = true

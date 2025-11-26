@@ -76,7 +76,7 @@ collision_layer = 2
 script = ExtResource("1_xm34u")
 FireAnimation = NodePath("AnimationPlayer")
 damage = 15
-knockback_force = 200.0
+knockback_force = 60.0
 metadata/_custom_type_script = "uid://b2cxmxx6atu31"
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]

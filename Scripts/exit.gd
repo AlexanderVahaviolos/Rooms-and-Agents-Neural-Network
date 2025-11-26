@@ -11,6 +11,7 @@ func _ready() -> void:
 	
 func _on_body_entered(body: Node2D) -> void:
 	body.score += 50
-	print(body.name, " has completed the maze. | SCORE: ", body.score) 
+	body.score += 120 / body.time_alive
+	print(body.name, " has completed the room. | SCORE: ", body.score) 
 	body.completed_flag = true
 	body.send_instance.emit(body)

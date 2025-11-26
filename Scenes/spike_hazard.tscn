@@ -9,7 +9,7 @@ radius = 7.0
 [node name="SpikeHazard" type="Area2D"]
 collision_layer = 2
 script = ExtResource("1_eoy5a")
-knockback_force = 100.0
+knockback_force = 40.0
 
 [node name="HazardSprite" type="Sprite2D" parent="."]
 texture = ExtResource("2_eoy5a")

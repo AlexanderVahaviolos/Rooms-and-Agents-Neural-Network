@@ -192,6 +192,8 @@ func _outline_agents() -> void:
 	prev_lowest_score_agent = lowest_score_agent
 
 func _on_send_agent_instance(agent: Agent) -> void:
+	# shove them out of the way
+	agent.global_position = Vector2(-10000, -10000)
 	agents.erase(agent.name)
 	
 	agent.set_physics_process(false)

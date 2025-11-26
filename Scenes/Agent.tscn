@@ -82,11 +82,14 @@ height = 8.0
 collision_mask = 10
 motion_mode = 1
 script = ExtResource("1_ptvjr")
-iframes_on_hit = 30
+iframes_on_hit = 10
+hazard_memory = null
+exit_memory = null
+memory_decay_distance = null
 
 [node name="DetectionComponent" type="Area2D" parent="." node_paths=PackedStringArray("Respondee")]
 collision_layer = 0
-collision_mask = 6
+collision_mask = 14
 script = ExtResource("2_hnfty")
 Respondee = NodePath("..")
 PayloadSendTime = 0.1
@@ -94,6 +97,29 @@ PayloadSendTime = 0.1
 [node name="DetectionShape" type="CollisionPolygon2D" parent="DetectionComponent"]
 visible = false
 polygon = PackedVector2Array(120, 90, -5, 15, -15, 0, -5, -15, 120, -90)
+
+[node name="Raycasts" type="Node2D" parent="DetectionComponent"]
+visible = false
+
+[node name="StaticDetector" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+target_position = Vector2(120, 0)
+collision_mask = 8
+
+[node name="StaticDetector2" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+target_position = Vector2(120, -90)
+collision_mask = 8
+
+[node name="StaticDetector3" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+target_position = Vector2(120, 90)
+collision_mask = 8
+
+[node name="StaticDetector4" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+target_position = Vector2(120, -45)
+collision_mask = 8
+
+[node name="StaticDetector5" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+target_position = Vector2(120, 45)
+collision_mask = 8
 
 [node name="AgentAnimator" type="AnimationPlayer" parent="."]
 libraries = {
@@ -120,6 +146,7 @@ max_velocity = Vector2(60, 60)
 
 [node name="ShadowComponent" type="Sprite2D" parent="."]
 modulate = Color(0.05882353, 0, 0.11764706, 0.1764706)
+show_behind_parent = true
 texture_filter = 1
 position = Vector2(-0.5, 0.5)
 scale = Vector2(0.0703125, 0.040625)

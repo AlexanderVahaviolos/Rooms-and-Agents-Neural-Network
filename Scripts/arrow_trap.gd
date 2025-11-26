@@ -58,7 +58,7 @@ func _ready() -> void:
 func _shoot_arrow() -> void:
 	for arrow in Arrows:
 		if arrow.is_available:
-			print("SHOOTING FROM ", arrow.global_position, " | SPOS: ", arrow.position)
+			#print("SHOOTING FROM ", arrow.global_position, " | SPOS: ", arrow.position)
 			arrow.is_available = false
 			arrow.visible = true
 			arrow.movement_component.direction = direction
