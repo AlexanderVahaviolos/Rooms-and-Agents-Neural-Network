@@ -10,8 +10,14 @@ func _ready() -> void:
 	shape_bounds = collision_shape.get_rect()
 	
 func _on_body_entered(body: Node2D) -> void:
-	body.score += 50
-	body.score += 120 / body.time_alive
-	print(body.name, " has completed the room. | SCORE: ", body.score) 
-	body.completed_flag = true
-	body.send_instance.emit(body)
+	if body is not Agent:
+		return 
+	
+	var agent: Agent = body
+	agent.score += 150
+	if agent.time_alive > 0.1:
+		agent.score += 120.0 / max(agent.time_alive, 5.0)
+	
+	print(agent.name, " has completed the room. | SCORE: ", agent.score) 
+	agent.completed_flag = true
+	agent.send_instance.emit(agent)

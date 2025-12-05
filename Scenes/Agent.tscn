@@ -1,10 +1,10 @@
 [gd_scene load_steps=16 format=3 uid="uid://bhyy0dr278vwm"]
 
-[ext_resource type="Script" uid="uid://bjhf63a1ud7xh" path="res://Scripts/Agent.gd" id="1_ptvjr"]
+[ext_resource type="Script" uid="uid://bjhf63a1ud7xh" path="res://Scripts/AgentScripts/Agent.gd" id="1_ptvjr"]
 [ext_resource type="Script" uid="uid://dkha4eqw0qmoa" path="res://Components/DetectionComponent.gd" id="2_hnfty"]
 [ext_resource type="Texture2D" uid="uid://bxdmsflstldvn" path="res://Sprites/Shapes/circle.png" id="2_n8wqh"]
 [ext_resource type="Script" uid="uid://cbjacdx3op603" path="res://Components/ShadowComponent.gd" id="3_2wyri"]
-[ext_resource type="Script" uid="uid://byd3700ubxftj" path="res://Scripts/States/state_machine.gd" id="3_n8wqh"]
+[ext_resource type="Script" uid="uid://byd3700ubxftj" path="res://Scripts/AgentScripts/States/state_machine.gd" id="3_n8wqh"]
 [ext_resource type="Script" uid="uid://d02olb4wb0hhx" path="res://Components/HealthComponent.gd" id="4_2wyri"]
 [ext_resource type="Script" uid="uid://csj7q8fitqvrx" path="res://Components/MovementComponent.gd" id="5_xs5q6"]
 [ext_resource type="Texture2D" uid="uid://duyhklxq2o5r7" path="res://Sprites/agentSpritesheet.png" id="6_isa54"]
@@ -82,10 +82,7 @@ height = 8.0
 collision_mask = 10
 motion_mode = 1
 script = ExtResource("1_ptvjr")
-iframes_on_hit = 10
-hazard_memory = null
-exit_memory = null
-memory_decay_distance = null
+iframes_on_hit = 50
 
 [node name="DetectionComponent" type="Area2D" parent="." node_paths=PackedStringArray("Respondee")]
 collision_layer = 0

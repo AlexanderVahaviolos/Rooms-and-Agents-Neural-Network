@@ -1,9 +1,9 @@
 [gd_scene load_steps=12 format=3 uid="uid://c0iktnuw2tq5e"]
 
-[ext_resource type="Script" uid="uid://bclmhuthf1wn7" path="res://Scripts/controllable_agent.gd" id="1_y4x24"]
+[ext_resource type="Script" uid="uid://bclmhuthf1wn7" path="res://Scripts/AgentScripts/controllable_agent.gd" id="1_y4x24"]
 [ext_resource type="Script" uid="uid://dkha4eqw0qmoa" path="res://Components/DetectionComponent.gd" id="2_bbcp7"]
 [ext_resource type="Script" uid="uid://d02olb4wb0hhx" path="res://Components/HealthComponent.gd" id="2_dwdqi"]
-[ext_resource type="Script" uid="uid://byd3700ubxftj" path="res://Scripts/States/state_machine.gd" id="2_qbfg8"]
+[ext_resource type="Script" uid="uid://byd3700ubxftj" path="res://Scripts/AgentScripts/States/state_machine.gd" id="2_qbfg8"]
 [ext_resource type="Script" uid="uid://csj7q8fitqvrx" path="res://Components/MovementComponent.gd" id="2_ywuk8"]
 [ext_resource type="Texture2D" uid="uid://duyhklxq2o5r7" path="res://Sprites/agentSpritesheet.png" id="4_q6esm"]
 

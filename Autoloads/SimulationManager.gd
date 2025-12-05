@@ -9,20 +9,20 @@ enum Detectables {
 	ARROW
 }
 
-func type_classifier(node: Node2D) -> int:
+func area_classifier(node: Node2D) -> Array:
 	if node is Exit:
-		return Detectables.EXIT
+		return ["exit", Detectables.EXIT]
 	elif node.name == "WallLayer":
-		return Detectables.WALL
+		return ["static", Detectables.WALL]
 	elif node is FireHazard:
-		return Detectables.FIRE
+		return ["direct", Detectables.FIRE]
 	elif node is SpikeHazard:
-		return Detectables.SPIKE
+		return ["direct", Detectables.SPIKE]
 	elif node is ArrowTrap:
-		return Detectables.ARROW_TRAP
+		return ["static", Detectables.ARROW_TRAP]
 	elif node is Arrow:
-		return Detectables.ARROW
+		return ["arrow", Detectables.ARROW]
 	else:
 		push_error(node, " is not part of the list")
-		return -999
+		return ["", -999]
 		

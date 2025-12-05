@@ -21,7 +21,7 @@ func _on_hazard_enter(body: Node2D) -> void:
 		var knockback_direction = -body.movement_component.direction
 		#print("APPLIED ", damage_dealt, " DAMAGE")
 		body.health_component.apply_damage(damage)
-		body.score -= 60
+		body.score -= 15
 		if knockback_force > 0:
 			#print("APPLIED ", knockback_force, " IN ", knockback_direction)
 			body.velocity = knockback_force * knockback_direction

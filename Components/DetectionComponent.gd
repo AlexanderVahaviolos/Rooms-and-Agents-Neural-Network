@@ -1,9 +1,6 @@
 class_name DetectionComponent
 extends Area2D
 
-signal target_entered(target: Area2D)
-signal target_exited(target: Area2D)
-
 signal static_detected(body: Node2D)
 
 @export var Respondee: Node
@@ -41,16 +38,16 @@ func _physics_process(_delta: float) -> void:
 		current_direction = next_direction
 		rotation = atan2(next_direction.y, next_direction.x)
 		
-func _on_static_detected(raycast: RayCast2D) -> void:	
+func _on_static_detected(raycast: RayCast2D) -> void:
+	emit_signal("static_detected", raycast)
 	static_point = raycast.get_collision_point()
 
 	if static_node != raycast.get_collider():
 		static_node = raycast.get_collider()
-		emit_signal("static_detected", static_node)
 		
 func _on_area_detected(area: Area2D) -> void:
 	targets[area.name] = area
-	emit_signal("target_entered", area)
+	pass
 
-func _on_area_exited(area: Area2D) -> void:
-	emit_signal("target_exited", area)
+func _on_area_exited(_area: Area2D) -> void:
+	pass

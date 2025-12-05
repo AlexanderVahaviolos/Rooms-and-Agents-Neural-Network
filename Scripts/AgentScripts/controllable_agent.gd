@@ -25,9 +25,9 @@ var flip_threshold: float = 0.1
 var current_room: Vector2i = Vector2i(1, 1)
 
 var states: Dictionary = {
-	"idle": preload("res://Scripts/States/ControlledAgentStates/CAgentIdle.gd").new(),
-	"move": preload("res://Scripts/States/ControlledAgentStates/CAgentMove.gd").new(),
-	"knockback": preload("res://Scripts/States/AgentStates/AgentKnockback.gd").new()
+	"idle": preload("res://Scripts/AgentScripts/States/ControlledAgentStates/CAgentIdle.gd").new(),
+	"move": preload("res://Scripts/AgentScripts/States/ControlledAgentStates/CAgentMove.gd").new(),
+	"knockback": preload("res://Scripts/AgentScripts/States/AgentStates/AgentKnockback.gd").new()
 }
 
 # Neural Testing

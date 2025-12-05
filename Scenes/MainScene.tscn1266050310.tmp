@@ -1,4 +1,4 @@
-[gd_scene load_steps=34 format=4 uid="uid://djc78b1oo870w"]
+[gd_scene load_steps=31 format=4 uid="uid://djc78b1oo870w"]
 
 [ext_resource type="Script" uid="uid://buudbiv2a8l38" path="res://Scripts/MainScene.gd" id="1_hpc76"]
 [ext_resource type="PackedScene" uid="uid://djp5h0dj1pxl4" path="res://Scenes/Room.tscn" id="2_nhkr4"]
@@ -9,16 +9,13 @@
 [ext_resource type="Texture2D" uid="uid://b3i3tjce2bf6b" path="res://Sprites/tilesets/DungeonTileset.png" id="5_y4jh7"]
 [ext_resource type="Texture2D" uid="uid://3of863yjwjag" path="res://Sprites/UI/pause_button.png" id="6_0iob3"]
 [ext_resource type="Texture2D" uid="uid://c7jojxb8l0wug" path="res://Sprites/UI/export.png" id="6_c1ier"]
-[ext_resource type="Script" uid="uid://bjwvl67x21w6o" path="res://Scripts/UI/reset_button.gd" id="6_gyaec"]
 [ext_resource type="PackedScene" uid="uid://c7e22x0od7yan" path="res://Scenes/exit.tscn" id="6_q68mp"]
 [ext_resource type="PackedScene" uid="uid://5vc2smd5iind" path="res://Scenes/fire_hazard.tscn" id="6_y4jh7"]
 [ext_resource type="Script" uid="uid://dy5vhn4eanosj" path="res://Scripts/UI/time_button.gd" id="7_4b75m"]
 [ext_resource type="Texture2D" uid="uid://1bjfxon0kx5f" path="res://Sprites/UI/import.png" id="7_gyaec"]
-[ext_resource type="Script" uid="uid://ehpl30n4ucsy" path="res://Scripts/UI/export_button.gd" id="8_p5ymy"]
 [ext_resource type="Texture2D" uid="uid://b3oui05oivany" path="res://Sprites/UI/skip_button.png" id="8_xb4mg"]
 [ext_resource type="Script" uid="uid://ccivq383t64hp" path="res://Scripts/UI/skip_button.gd" id="9_5qxwa"]
 [ext_resource type="Texture2D" uid="uid://b7l11xkp8vjbr" path="res://Sprites/UI/loop_button_disabled.png" id="9_6t1o7"]
-[ext_resource type="Script" uid="uid://coi2il8fct4ip" path="res://Scripts/UI/import_button.gd" id="10_3va76"]
 [ext_resource type="Texture2D" uid="uid://ce6t8tii4kdhw" path="res://Sprites/UI/loop_button_enabled.png" id="10_5qxwa"]
 [ext_resource type="Script" uid="uid://sbkdbmhxekm5" path="res://Scripts/UI/loop_button.gd" id="12_xc4hf"]
 [ext_resource type="PackedScene" uid="uid://bnnroyotxaufp" path="res://Scenes/spike_hazard.tscn" id="16_6rnll"]
@@ -1096,37 +1093,29 @@ layout_direction = 2
 layout_mode = 2
 alignment = 1
 
-[node name="ResetButton" type="TextureButton" parent="UIComponents/SimulationControls/MContainerT/HBoxContainer" node_paths=PackedStringArray("MainScene")]
+[node name="ResetButton" type="TextureButton" parent="UIComponents/SimulationControls/MContainerT/HBoxContainer"]
 layout_mode = 2
-toggle_mode = true
 texture_normal = ExtResource("5_i0j58")
-texture_pressed = ExtResource("5_i0j58")
-script = ExtResource("6_gyaec")
-MainScene = NodePath("../../../../..")
 
 [node name="ExportButton" type="TextureButton" parent="UIComponents/SimulationControls/MContainerT/HBoxContainer"]
 layout_mode = 2
 texture_normal = ExtResource("6_c1ier")
-script = ExtResource("8_p5ymy")
 
 [node name="ImportButton" type="TextureButton" parent="UIComponents/SimulationControls/MContainerT/HBoxContainer"]
 layout_mode = 2
 texture_normal = ExtResource("7_gyaec")
-script = ExtResource("10_3va76")
 
 [node name="MContainerB" type="MarginContainer" parent="UIComponents/SimulationControls"]
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 size_flags_horizontal = 4
-size_flags_vertical = 8
 theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
+theme_override_constants/margin_top = 60
 theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 40
 
 [node name="VButtonContainer" type="VBoxContainer" parent="UIComponents/SimulationControls/MContainerB"]
 layout_mode = 2
-size_flags_horizontal = 8
+alignment = 1
 
 [node name="PauseLabel" type="Label" parent="UIComponents/SimulationControls/MContainerB/VButtonContainer"]
 layout_mode = 2
@@ -1168,7 +1157,6 @@ texture_pressed = ExtResource("9_6t1o7")
 script = ExtResource("12_xc4hf")
 
 [node name="RoomContainer" type="Node2D" parent="."]
-unique_name_in_owner = true
 process_mode = 1
 
 [node name="BackgroundLayer" type="TileMapLayer" parent="RoomContainer"]
@@ -1182,14 +1170,13 @@ tile_set = SubResource("TileSet_f140w")
 
 [node name="WallLayer" type="TileMapLayer" parent="RoomContainer"]
 texture_filter = 1
-tile_map_data = PackedByteArray("AAD1//r/AAATAAEAAAD2//r/AAARAAEAAAD3//r/AAARAAEAAAD4//r/AAARAAEAAAD5//r/AAARAAEAAAD6//r/AAARAAEAAAD7//r/AAARAAEAAAD8//r/AAARAAEAAAD9//r/AAARAAEAAAD///r/AAATAAEAAAACAPr/AAAUAAEAAAADAPr/AAATAAEAAAAEAPr/AAARAAEAAAAFAPr/AAARAAEAAAAGAPr/AAARAAEAAAAHAPr/AAARAAEAAAAIAPr/AAARAAEAAAAJAPr/AAARAAEAAAAKAPr/AAAUAAEAAAAIAPn/AAARAAAAAAAJAPn/AAARAAAAAAAKAPn/AAAUAAAAAAAHAPn/AAARAAAAAAD1//n/AAATAAAAAAD2//n/AAARAAAAAAD3//n/AAARAAAAAAD4//n/AAARAAAAAAD5//n/AAARAAAAAAD6//n/AAARAAAAAAD7//n/AAARAAAAAAD8//n/AAARAAAAAAD9//n/AAARAAAAAAD+//n/AAARAAAAAAD///n/AAAWAAEAAAACAPn/AAAZAAEAAAADAPn/AAARAAAAAAAEAPn/AAARAAAAAAAFAPn/AAARAAAAAAAGAPn/AAARAAAAAAAKAPv/AAAQAAEAAAAKAPz/AAAQAAEAAAAKAP3/AAAQAAEAAAAKAP7/AAAQAAEAAAAKAP//AAAQAAEAAAAKAAAAAAAQAAEAAAAKAAEAAAAQAAEAAAAKAAIAAAAQAAEAAAAKAAMAAAAQAAEAAAAKAAQAAAAQAAEAAAAKAAUAAAAQAAEAAAAKAAYAAAAUAAIAAAD1/wYAAAATAAIAAAD2/wYAAAARAAIAAAD3/wYAAAARAAIAAAD4/wYAAAARAAIAAAD5/wYAAAARAAIAAAD6/wYAAAARAAIAAAD7/wYAAAARAAIAAAD8/wYAAAARAAIAAAD9/wYAAAARAAIAAAD+/wYAAAARAAIAAAD//wYAAAARAAIAAAAAAAYAAAARAAIAAAABAAYAAAARAAIAAAACAAYAAAARAAIAAAADAAYAAAARAAIAAAAEAAYAAAARAAIAAAAFAAYAAAARAAIAAAAGAAYAAAARAAIAAAAHAAYAAAARAAIAAAAIAAYAAAARAAIAAAAJAAYAAAARAAIAAAD1//v/AAASAAEAAAD1//z/AAASAAEAAAD1//3/AAASAAEAAAD1//7/AAASAAEAAAD1////AAASAAEAAAD1/wAAAAASAAEAAAD1/wEAAAASAAEAAAD1/wIAAAASAAEAAAD1/wMAAAASAAEAAAD1/wQAAAASAAEAAAD1/wUAAAASAAEAAAD1/wcAAAARAAEAAAD2/wcAAAARAAEAAAD3/wcAAAARAAEAAAD4/wcAAAARAAEAAAD5/wcAAAARAAEAAAD6/wcAAAARAAEAAAD7/wcAAAARAAEAAAD8/wcAAAARAAEAAAD9/wcAAAARAAEAAAD+/wcAAAARAAEAAAD//wcAAAARAAEAAAAAAAcAAAARAAEAAAABAAcAAAARAAEAAAACAAcAAAARAAEAAAADAAcAAAARAAEAAAAEAAcAAAARAAEAAAAFAAcAAAARAAEAAAAGAAcAAAARAAEAAAAHAAcAAAARAAEAAAAIAAcAAAARAAEAAAAJAAcAAAARAAEAAAAKAAcAAAARAAEAAAD+//r/AAAUAAEAAAD+//v/AAAQAAEAAAD+//z/AAAQAAMAAAADAPv/AAASAAEAAAADAPz/AAASAAMAAAD///v/AAASAAEAAAACAPv/AAAQAAEAAAACAPz/AAAQAAMAAAD///z/AAASAAMAAAA=")
+tile_map_data = PackedByteArray("AAD1//r/AAATAAEAAAD2//r/AAARAAEAAAD3//r/AAARAAEAAAD4//r/AAARAAEAAAD5//r/AAARAAEAAAD6//r/AAARAAEAAAD7//r/AAARAAEAAAD8//r/AAARAAEAAAD9//r/AAARAAEAAAD+//r/AAARAAEAAAD///r/AAAWAAIAAAACAPr/AAAZAAIAAAADAPr/AAARAAEAAAAEAPr/AAARAAEAAAAFAPr/AAARAAEAAAAGAPr/AAARAAEAAAAHAPr/AAARAAEAAAAIAPr/AAARAAEAAAAJAPr/AAARAAEAAAAKAPr/AAAUAAEAAAAIAPn/AAARAAAAAAAJAPn/AAARAAAAAAAKAPn/AAAUAAAAAAAHAPn/AAARAAAAAAD1//n/AAATAAAAAAD2//n/AAARAAAAAAD3//n/AAARAAAAAAD4//n/AAARAAAAAAD5//n/AAARAAAAAAD6//n/AAARAAAAAAD7//n/AAARAAAAAAD8//n/AAARAAAAAAD9//n/AAARAAAAAAD+//n/AAARAAAAAAD///n/AAAWAAEAAAACAPn/AAAZAAEAAAADAPn/AAARAAAAAAAEAPn/AAARAAAAAAAFAPn/AAARAAAAAAAGAPn/AAARAAAAAAAKAPv/AAAQAAEAAAAKAPz/AAAQAAEAAAAKAP3/AAAQAAEAAAAKAP7/AAAQAAEAAAAKAP//AAAQAAEAAAAKAAAAAAAQAAEAAAAKAAEAAAAQAAEAAAAKAAIAAAAQAAEAAAAKAAMAAAAQAAEAAAAKAAQAAAAQAAEAAAAKAAUAAAAQAAEAAAAKAAYAAAAUAAIAAAD1/wYAAAATAAIAAAD2/wYAAAARAAIAAAD3/wYAAAARAAIAAAD4/wYAAAARAAIAAAD5/wYAAAARAAIAAAD6/wYAAAARAAIAAAD7/wYAAAARAAIAAAD8/wYAAAARAAIAAAD9/wYAAAARAAIAAAD+/wYAAAARAAIAAAD//wYAAAARAAIAAAAAAAYAAAARAAIAAAABAAYAAAARAAIAAAACAAYAAAARAAIAAAADAAYAAAARAAIAAAAEAAYAAAARAAIAAAAFAAYAAAARAAIAAAAGAAYAAAARAAIAAAAHAAYAAAARAAIAAAAIAAYAAAARAAIAAAAJAAYAAAARAAIAAAD1//v/AAASAAEAAAD1//z/AAASAAEAAAD1//3/AAASAAEAAAD1//7/AAASAAEAAAD1////AAASAAEAAAD1/wAAAAASAAEAAAD1/wEAAAASAAEAAAD1/wIAAAASAAEAAAD1/wMAAAASAAEAAAD1/wQAAAASAAEAAAD1/wUAAAASAAEAAAD1/wcAAAARAAEAAAD2/wcAAAARAAEAAAD3/wcAAAARAAEAAAD4/wcAAAARAAEAAAD5/wcAAAARAAEAAAD6/wcAAAARAAEAAAD7/wcAAAARAAEAAAD8/wcAAAARAAEAAAD9/wcAAAARAAEAAAD+/wcAAAARAAEAAAD//wcAAAARAAEAAAAAAAcAAAARAAEAAAABAAcAAAARAAEAAAACAAcAAAARAAEAAAADAAcAAAARAAEAAAAEAAcAAAARAAEAAAAFAAcAAAARAAEAAAAGAAcAAAARAAEAAAAHAAcAAAARAAEAAAAIAAcAAAARAAEAAAAJAAcAAAARAAEAAAAKAAcAAAARAAEAAAA=")
 tile_set = SubResource("TileSet_4b75m")
 
 [node name="InteractLayer" type="TileMapLayer" parent="RoomContainer"]
-tile_map_data = PackedByteArray("AAAAAPr/AAAAAAAAAQA=")
+tile_map_data = PackedByteArray("AAAAAPr/AAAAAAAAAQD///v/AAAAAAAAAgD///z/AAAAAAAAAgD///3/AAAAAAAAAgACAPv/AAAAAAAAAgACAPz/AAAAAAAAAgACAP3/AAAAAAAAAgADAP3/AAAAAAAAAgADAP7/AAAAAAAAAgABAAUAAAAAAAAAAgAAAAUAAAAAAAAAAgD//wUAAAAAAAAAAgD+/wUAAAAAAAAAAgD9/wUAAAAAAAAAAgD8/wQAAAAAAAAAAgD7/wQAAAAAAAAAAgD7/wMAAAAAAAAAAgD8//7/AAAAAAAAAgD8//3/AAAAAAAAAgD9//3/AAAAAAAAAgD+//3/AAAAAAAAAgACAAUAAAAAAAAAAgADAAUAAAAAAAAAAgAEAAQAAAAAAAAAAgD8/wMAAAAAAAAAAwD9/wQAAAAAAAAAAwADAAQAAAAAAAAAAwADAAMAAAAAAAAAAwD7//7/AAAAAAAAAgD3//z/AAAAAAAABAA=")
 tile_set = SubResource("TileSet_0iob3")
 
 [node name="AgentContainer" type="Node2D" parent="."]
-unique_name_in_owner = true
 process_mode = 1
 y_sort_enabled = true
