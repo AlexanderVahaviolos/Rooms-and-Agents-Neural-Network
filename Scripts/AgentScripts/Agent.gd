@@ -121,7 +121,6 @@ func reset_agent() -> void:
 	
 	prev_exit_distances.clear()
 	
-	start_position = Vector2i(randi_range(0, 25), randi_range(0, 25))
 	direction = Vector2(randf_range(-1, 1), randf_range(-1, 1))
 	new_direction = direction
 	move_intent = 0.0

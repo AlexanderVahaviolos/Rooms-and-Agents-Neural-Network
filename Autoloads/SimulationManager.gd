@@ -12,7 +12,7 @@ enum Detectables {
 func area_classifier(node: Node2D) -> Array:
 	if node is Exit:
 		return ["exit", Detectables.EXIT]
-	elif node.name == "WallLayer":
+	elif node.name == "WallLayer" or node.name == "ForegroundLayer":
 		return ["static", Detectables.WALL]
 	elif node is FireHazard:
 		return ["direct", Detectables.FIRE]

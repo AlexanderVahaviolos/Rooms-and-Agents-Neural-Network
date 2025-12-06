@@ -2,7 +2,7 @@ class_name MemoryInput
 extends RefCounted
 
 # Neuron inputs
-var reference: Agent
+var agent_reference: Agent
 var memory_inputs: Array
 
 # Memory Storage
@@ -26,14 +26,14 @@ var s_memory: int
 # Inputs from DirectionComponent
 var d_comp: DetectionComponent
 
-func _init(reference: Node2D) -> void:
-	self.reference = reference
-	self.MDD = reference.memory_decay_distance
-	self.d_comp = reference.detection_component
+func _init(ag_ref: Node2D) -> void:
+	self.agent_reference = ag_ref
+	self.MDD = agent_reference.memory_decay_distance
+	self.d_comp = agent_reference.detection_component
 	
-	self.d_memory = reference.direct_memory
-	self.e_memory = reference.exit_memory
-	self.s_memory = reference.static_memory
+	self.d_memory = agent_reference.direct_memory
+	self.e_memory = agent_reference.exit_memory
+	self.s_memory = agent_reference.static_memory
 	
 	d_comp.connect("area_entered", Callable(self, "_insert_area"))
 	d_comp.connect("static_detected", Callable(self, "_insert_area"))
@@ -87,9 +87,9 @@ func update_memory() -> void:
 			var dir: Vector2
 			
 			if !d[0] is RayCast2D: # Checking if it's from a raycast or not
-				dir = (d[0].global_position - reference.global_position)
+				dir = (d[0].global_position - agent_reference.global_position)
 			else:
-				dir = (d[0].get_collision_point() - reference.global_position)
+				dir = (d[0].get_collision_point() - agent_reference.global_position)
 			var dist: float = dir.length()
 		
 			# Constructing the Dictionary Values for the key
@@ -105,10 +105,10 @@ func update_memory() -> void:
 	
 			# Checking if current memory type is Exit for scoring purposes
 			if memory_dict[key]["type"] == SimulationManager.Detectables.EXIT:
-				reference.prev_exit_distances[key] = dist
+				agent_reference.prev_exit_distances[key] = dist
 	
 			# Checking whether value is out of distance and removes it from dictionary
-			if dist > reference.memory_decay_distance and dict != exit_dict:
+			if dist > agent_reference.memory_decay_distance and dict != exit_dict:
 				dict.erase(key)
 				used_slots -= 1
 	

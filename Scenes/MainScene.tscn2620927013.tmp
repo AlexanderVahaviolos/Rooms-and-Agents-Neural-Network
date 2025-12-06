@@ -27,7 +27,7 @@ bg_color = Color(0.58260643, 0.33223593, 0.4826411, 1)
 [node name="MainScene" type="Node2D"]
 process_mode = 3
 script = ExtResource("1_hpc76")
-start_agent_count = 1
+start_agent_count = 100
 RoomsScene = Dictionary[String, PackedScene]({
 "Room1": ExtResource("2_hx8n4")
 })

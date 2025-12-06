@@ -12,7 +12,7 @@ var memory_update_timer: float = 0.0
 @export_range(0.1, 0.5, 0.05) var MEMORY_TIMER_LIMIT: float = 0.2 # called every 200ms
 
 @export_group("Scenes")
-@export var MazeScene: PackedScene
+@export var RoomsScene: Dictionary[String, PackedScene]
 @export var AgentScene: PackedScene
 
 @export_group("Generation Decay Settings")
@@ -20,26 +20,29 @@ var memory_update_timer: float = 0.0
 @export_range(0.995, 0.999, 0.0005) var DECAY_FACTOR: float = 0.9975
 const MIN_DECAY: float = 0.8
 
-@export_range(1.0, 30, 1.0) var CONVERGE_TIME: float = 1.0
-@export_range(10, 60, 5.0) var SLOW_TIME: float = 20.0
-
 @export_category("DEBUG")
 @export var ControllableAgentScene: PackedScene
 @export var enable_character: bool = false
 
-var maze
-var enter_location: Vector2i
-var exit_location: Vector2i
-
 var agents: Dictionary[String, Agent] = {}
-var dead_agents: Dictionary[String, Agent] = {} # might not need
-var complete_agents: Dictionary[String, Agent] = {} # complete as finished maze
+var dead_agents: Dictionary[String, Agent] = {} 
+var complete_agents: Dictionary[String, Agent] = {} 
 var agent_neurons: int = 0
 
 # Agent Generation data
 var best_agent: Agent = null
 var generation: int = 1
 var best_time: float
+
+# Room Settings
+
+var room: Node2D
+var current_room: String
+var start_point: Vector2i
+
+var FAST_TIME: float
+var SLOW_TIME: float
+var MIN_TIME_FACTOR: float
 
 var check_score_timer: float = 0.0
 const score_timer_limit: float = 0.25
@@ -71,13 +74,24 @@ func _physics_process(delta: float) -> void:
 			_next_generation()
 	
 func setup() -> void:
-	# Initial Setup for the maze and the agents
+	# Initial Setup for the room and the agents
 	generation = 0
 	memory_update_timer = 0.0
 	check_score_timer = 0.0
 	best_agent = null
 	
-	# generate maze code
+	# Generate Room Code
+	current_room = ["Room1"].pick_random()
+	match(current_room):
+		"Room1":
+			FAST_TIME = 10.0
+			SLOW_TIME = 40.0
+			MIN_TIME_FACTOR = 0.85
+			room = RoomsScene[current_room].instantiate()
+			start_point = Vector2i(12, 60)
+			%RoomContainer.add_child(room)
+		_:
+			push_error("Invalid room chosen: ", current_room)
 	
 	# generate the agents 
 	if !enable_character:
@@ -85,6 +99,7 @@ func setup() -> void:
 			var agent_instance = AgentScene.instantiate()
 			agent_instance.id = i
 			agent_instance.name = str(generation) + "-" + str(agent_instance.id)
+			agent_instance.start_position = start_point
 			agent_instance.connect("send_instance", Callable(self, "_on_send_agent_instance"))
 			agent_instance.add_to_group("Agents")
 			%AgentContainer.add_child(agent_instance)
@@ -170,6 +185,7 @@ func reset_agents(all_reset: bool) -> void:
 		for key in resulting_agents.keys():
 			var agent_instance = resulting_agents[key]
 			agent_instance.name = str(generation) + "-" + str(agent_instance.id)
+			agent_instance.start_position = start_point
 			key = agent_instance.name
 				
 			agent_instance.reset_agent()

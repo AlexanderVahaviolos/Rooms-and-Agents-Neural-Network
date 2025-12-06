@@ -92,7 +92,6 @@ Respondee = NodePath("..")
 PayloadSendTime = 0.1
 
 [node name="DetectionShape" type="CollisionPolygon2D" parent="DetectionComponent"]
-visible = false
 polygon = PackedVector2Array(120, 90, -5, 15, -15, 0, -5, -15, 120, -90)
 
 [node name="Raycasts" type="Node2D" parent="DetectionComponent"]
