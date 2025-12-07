@@ -14,11 +14,11 @@ signal send_instance(agent: Agent)
 @export var iframes_on_hit: int
 var iframes: float = 0
 
-@export_category("Detection Parameters")
+@export_category("Memory Parameters")
 @export_range(4, 10, 1) var direct_memory: int = 4
 @export_range(1, 3, 1) var exit_memory: int = 2
-@export_range(1, 3, 1) var static_memory: int = 2
-@export_range(100, 300, 10) var memory_decay_distance: float = 100.0
+@export_range(1, 3, 1) var static_memory: int = 4
+@export_range(20, 50, 2) var memory_decay_distance: float = 30.0
 
 var flip_threshold: float = 0.1
 
@@ -32,14 +32,26 @@ var states: Dictionary = {
 	"knockback": preload("res://Scripts/AgentScripts/States/AgentStates/AgentKnockback.gd").new()
 }
 
+enum DeathTypes {
+	BAD_SCORE,
+	SPINNING,
+	CIRCLING,
+	STAGNATION,
+	WALL_TOUCH,
+	WALL_STUCK,
+	NO_MOVEMENT
+}
+var death_reason: int
+
 # Neural Network Variables
 var brain: Net = Net.new()
 var memory: MemoryInput
-var neuron_inputs: Array
+var agent_inputs: Array[float] = []
+const AGENT_INP_SIZE: int = 7
+var neuron_inputs: Array[float] = []
 var score: float = 0.0
 var time_alive: float = 0.0
 var id: int
-var initialized: bool = false
 
 # --- STAGNATION CHECKING ---
 var stagnation_timer: float = 0.0
@@ -73,20 +85,22 @@ var death_flag: bool = false
 var completed_flag: bool = false
 
 # initialized for now
-var start_position: Vector2i = Vector2i(randi_range(0, 25), randi_range(0, 25))
+var start_position: Vector2i = Vector2i(12, 120)
 
 var direction: Vector2 = Vector2(randf_range(-1, 1), randf_range(-1, 1))
 var new_direction: Vector2
 var turn_angle: float
 var move_intent: float
 
-var prev_exit_distances: Dictionary[String, float]
+var prev_exit_distances: Dictionary[String, float] = {}
 
 var prev_position: Vector2
 var prev_velocity: Vector2
 
-func reset_agent() -> void:	
-	neuron_inputs.clear()
+func reset_agent() -> void:
+	memory.reset()
+	neuron_inputs.fill(0.0)
+	agent_inputs.fill(0.0)
 	
 	score = 0.0
 	time_alive = 0.0
@@ -113,13 +127,9 @@ func reset_agent() -> void:
 	idle_time = 0.0
 
 	# --- AGENT FINAL CONDITIONS --- 
+	death_reason = -1
 	death_flag = false
 	completed_flag = false
-	
-	set_physics_process(true)
-	visible = true
-	
-	prev_exit_distances.clear()
 	
 	direction = Vector2(randf_range(-1, 1), randf_range(-1, 1))
 	new_direction = direction
@@ -127,11 +137,18 @@ func reset_agent() -> void:
 	
 	global_position = start_position
 	
-	prev_spin_angle = direction.angle()
+	prev_exit_distances.clear()
+	
+	turn_angle = 0 
 	prev_position = global_position
 	prev_velocity = velocity
-	
-func _ready() -> void:
+
+func enabled(state: bool) -> void:
+	detection_component.set_physics_process(state)
+	self.set_physics_process(state)
+	visible = state
+
+func _ready() -> void:	
 	global_position = start_position
 	
 	prev_spin_angle = direction.angle()
@@ -139,6 +156,11 @@ func _ready() -> void:
 	prev_velocity = velocity
 	
 	memory = MemoryInput.new(self)
+	agent_inputs.resize(AGENT_INP_SIZE)
+	agent_inputs.fill(0.0)
+	neuron_inputs.resize(AGENT_INP_SIZE + memory.memory_size)
+	neuron_inputs.fill(0.0)
+	
 	health_component.connect("damaged", Callable(self, "_on_damaged"))
 	health_component.connect("died", Callable(self, "_on_death"))
 	state_machine.states = self.states
@@ -148,11 +170,12 @@ func _ready() -> void:
 	state_machine.start()
 		
 	agent_sprite.material = agent_sprite.material.duplicate()
-		
+	
 func _physics_process(delta: float) -> void:
 	if death_flag:
 		send_instance.emit(self)
-		
+	
+	# Step 1: Fill in agent_inputs array
 	var normalized_pos: Vector2 = global_position / Vector2(WindowManager.screen_size)
 	var normalized_vel: Vector2 = velocity / movement_component.max_velocity
 	var wall_sensor_value: float = 0
@@ -165,17 +188,24 @@ func _physics_process(delta: float) -> void:
 	elif !is_on_wall() and wall_flag:
 		wall_sensor_value = 0.0
 		wall_flag = false
+	
+	# Building the Agent Input Array
+	agent_inputs[0] = normalized_pos.x
+	agent_inputs[1] = normalized_pos.y
+	agent_inputs[2] = normalized_vel.x
+	agent_inputs[3] = normalized_vel.y
+	agent_inputs[4] = direction.x
+	agent_inputs[5] = direction.y
+	agent_inputs[6] = wall_sensor_value
+	
+	# Step 2: Copy agent_inputs + memory_inputs into neuron_inputs
+	for i in range(AGENT_INP_SIZE):
+		neuron_inputs[i] = agent_inputs[i]
 		
-	var agent_inputs = [
-		normalized_pos.x, normalized_pos.y,
-		normalized_vel.x, normalized_vel.y,
-		direction.x, direction.y,
-		wall_sensor_value
-	]
+	for i in range(memory.memory_size):
+		neuron_inputs[AGENT_INP_SIZE + i] = memory.memory_inputs[i]
 	
-	neuron_inputs = agent_inputs.duplicate()
-	neuron_inputs.append_array(memory.memory_inputs)
-	
+	# Step 3: Get Agent prediction
 	var output = brain.predict(neuron_inputs)
 	turn_angle = output[0] * 5.0 # radians/sec
 	new_direction = direction.rotated(turn_angle * delta).normalized()
@@ -238,22 +268,20 @@ func update_score(delta: float) -> void:
 	# OVERALL JUST BAD CHECK
 	if score < -40:
 		death_flag = true
-		print("Agent ", name, " died because their score was too low")
+		death_reason = DeathTypes.BAD_SCORE
 		return
 	
 	# SPIN CHECK
 	var current_spin_angle = direction.angle()
 	var delta_rotation_rad = current_spin_angle - prev_spin_angle
 	
-	while delta_rotation_rad > PI:
+	if delta_rotation_rad > PI:
 		delta_rotation_rad -= TAU
-	while delta_rotation_rad < -PI:
+	elif delta_rotation_rad < -PI:
 		delta_rotation_rad += TAU
 	
-	total_spin_angle += abs(delta_rotation_rad)
 	prev_spin_angle = current_spin_angle
-	spin_timer += delta
-	
+		
 	if abs(delta_rotation_rad) > SMALL_ANGLE:
 		spin_timer += delta
 		total_spin_angle += abs(delta_rotation_rad)
@@ -264,7 +292,7 @@ func update_score(delta: float) -> void:
 	if spin_timer >= SPIN_TIME_LIMIT and total_spin_angle >= SPIN_THRESHOLD: # 2 full cycles
 		score -= 20
 		death_flag = true
-		print("Agent ", name, " died because they spun too much")
+		death_reason = DeathTypes.SPINNING
 		return
 	
 	# CIRCLE CHECK
@@ -279,14 +307,14 @@ func update_score(delta: float) -> void:
 	if circle_timer > CIRCLE_TIME_LIMIT:
 		score -= 15.0
 		death_flag = true
-		print("Agent ", name, " died because they were circling around")
+		death_reason = DeathTypes.CIRCLING
 		return
 		
 	# TOUCHED THE WALL TOO MANY TIMES CHECK
 	if wall_touch_counter > 4:
 		# score is already deducted every wall touch
 		death_flag = true
-		print("Agent ", name, " died because they liked walls too much")
+		death_reason = DeathTypes.WALL_TOUCH
 		return
 	
 	# PROGRESS CHECK
@@ -301,7 +329,7 @@ func update_score(delta: float) -> void:
 	if stagnation_timer > 5.0: # 5 seconds of no real score gain
 		score -= 20.0
 		death_flag = true
-		print("Agent ", name, " died because they stagnated for too long")
+		death_reason = DeathTypes.STAGNATION
 		return
 	
 	# STUCK ON WALL CHECK
@@ -313,7 +341,7 @@ func update_score(delta: float) -> void:
 	if stuck_timer > 2.0:
 		score -= 40.0
 		death_flag = true
-		print("Agent ", name, " died because they got stuck on a wall")
+		death_reason = DeathTypes.WALL_STUCK
 		return
 	
 	# NO MOVEMENT CHECK
@@ -322,7 +350,7 @@ func update_score(delta: float) -> void:
 		if idle_time > 5.0:
 			score -= 20.0
 			death_flag = true
-			print("Agent ", name, " died because they didn't move enough")
+			death_reason = DeathTypes.NO_MOVEMENT
 			return
 	else:
 		idle_time = 0.0
@@ -331,7 +359,6 @@ func update_score(delta: float) -> void:
 	
 	prev_position = global_position
 	prev_velocity = velocity
-	#print(score)	
 
 func _on_damaged(_damage: int) -> void:
 	state_machine.change_state("knockback")

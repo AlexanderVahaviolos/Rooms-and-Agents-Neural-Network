@@ -4,18 +4,29 @@ var screen_size: Vector2i
 const mutation_rate: float = 0.05
 
 @export_category("Simulation Controls")
-@export var start_agent_count: int = 5
-var current_agent_count: int = start_agent_count
+@export_range(10, 250, 5) var total_agents: int = 5
+var spawned_agents: int = 0
+var spawn_chunk: int = 0
+var agent_spawn_timer: float = 0.0
+@export var SPAWN_TIME: float = 0.1
 
-# --- MEMORY UPDATING ---
+# Agent Processing
+## Amount of Agents to process each physics frame
+@export var enable_chunking: bool = true
+@export_range(2, 10, 1) var chunk_partitions: int = 5
+var process_chunk: int = 0
+var process_count: int = 0
 var memory_update_timer: float = 0.0
-@export_range(0.1, 0.5, 0.05) var MEMORY_TIMER_LIMIT: float = 0.2 # called every 200ms
+@export_range(0.1, 0.3, 0.05) var MEMORY_TIMER_LIMIT: float = 0.2 
 
 @export_group("Scenes")
 @export var RoomsScene: Dictionary[String, PackedScene]
 @export var AgentScene: PackedScene
 
-@export_group("Generation Decay Settings")
+@export_group("Generation Parameters")
+@export_range(0, 0.2, 0.01) var best_percentage: float = 0.10
+@export_range(1, 5, 1) var best_brains: int = 3
+var best_cutoff: int = 0
 @export_range(0.8, 0.9, 0.025) var BASE_DECAY: float = 0.85 
 @export_range(0.995, 0.999, 0.0005) var DECAY_FACTOR: float = 0.9975
 const MIN_DECAY: float = 0.8
@@ -45,9 +56,9 @@ var SLOW_TIME: float
 var MIN_TIME_FACTOR: float
 
 var check_score_timer: float = 0.0
-const score_timer_limit: float = 0.25
-var prev_top_score_agent: Agent
-var prev_lowest_score_agent: Agent
+const score_timer_limit: float = 0.5
+var prev_best: Agent
+var prev_worst: Agent
 
 func _ready() -> void:
 	%SkipButton.connect("pressed", Callable(self, "_next_generation"))
@@ -57,28 +68,69 @@ func _ready() -> void:
 
 # Just an agent size check
 func _physics_process(delta: float) -> void:
-	if !%TimeButton.button_pressed:
-		check_score_timer += delta
-		if check_score_timer >= score_timer_limit:
-			check_score_timer = 0.0
-			_outline_agents()
+	# SPAWNING AGENTS
+	if spawned_agents != total_agents:
+		agent_spawn_timer += delta
+		if agent_spawn_timer >= SPAWN_TIME:
+			agent_spawn_timer = 0.0
+			if enable_chunking:
+				var s_count: int = spawn_chunk
+				if spawned_agents + spawn_chunk > total_agents:
+					s_count = total_agents - spawned_agents
+				_spawn_agents(s_count)
+			else:
+				_spawn_agents(total_agents)
+		return
 	
-		memory_update_timer += delta
-		if memory_update_timer >= MEMORY_TIMER_LIMIT:
-			for agent in agents.values():
-				agent.memory.update_memory()
-				agent.update_score(memory_update_timer)
-			memory_update_timer = 0.0
+	# OUTLINER
+	check_score_timer += delta
+	if check_score_timer >= score_timer_limit:
+		check_score_timer = 0.0
+		_outline_agents()
 	
-		if !enable_character and !%LoopButton.button_pressed and agents.is_empty():
-			_next_generation()
+	# AGENT MEMORY UPDATER
+	memory_update_timer += delta
+	if memory_update_timer >= MEMORY_TIMER_LIMIT:
+		var dt: float = memory_update_timer
+		memory_update_timer = 0.0
+
+		var list: Array = agents.values()
+		var agent_count: int = list.size()
+		if agent_count == 0:
+			return
+
+		var p_count: int = 0
+		if enable_chunking:
+			p_count = process_chunk
+			if process_count + process_chunk > agent_count:
+				p_count = agent_count - process_count
+		else:
+			p_count = agent_count
+
+		for i in range(p_count):
+			var idx: int = process_count + i
+			var agent: Agent = list[idx]
+			agent.memory.update_memory()
+			agent.update_score(dt)
+		
+		process_count += p_count
+		if process_count >= agent_count:
+			process_count = 0
+	
+	# NEXT GENERATION CHECK
+	if !enable_character and !%LoopButton.button_pressed and agents.is_empty():
+		print("End of Generation: ", generation)
+		_next_generation()
 	
 func setup() -> void:
 	# Initial Setup for the room and the agents
 	generation = 0
+	spawned_agents = 0
 	memory_update_timer = 0.0
 	check_score_timer = 0.0
 	best_agent = null
+	@warning_ignore("narrowing_conversion")
+	best_cutoff = total_agents * best_percentage
 	
 	# Generate Room Code
 	current_room = ["Room1"].pick_random()
@@ -93,11 +145,23 @@ func setup() -> void:
 		_:
 			push_error("Invalid room chosen: ", current_room)
 	
-	# generate the agents 
+	if enable_chunking:
+		@warning_ignore("integer_division")
+		process_chunk = max(1, total_agents / chunk_partitions)
+		@warning_ignore("integer_division")
+		spawn_chunk = max(1, total_agents / chunk_partitions)
+		_spawn_agents(spawn_chunk)
+	
+	%GenerationLabel.text = "Generation " + str(generation)
+	%ScoreLabel.text = "Previous Top Score: 0"
+
+func _spawn_agents(count: int) -> void:
+	# generate the agents
 	if !enable_character:
-		for i in range(start_agent_count):
+		var current_size: int = spawned_agents
+		for i in range(count):
 			var agent_instance = AgentScene.instantiate()
-			agent_instance.id = i
+			agent_instance.id = i + current_size
 			agent_instance.name = str(generation) + "-" + str(agent_instance.id)
 			agent_instance.start_position = start_point
 			agent_instance.connect("send_instance", Callable(self, "_on_send_agent_instance"))
@@ -107,9 +171,7 @@ func setup() -> void:
 	else:
 		var agent_instance = ControllableAgentScene.instantiate()
 		%AgentContainer.add_child(agent_instance)
-
-	%GenerationLabel.text = "Generation " + str(generation)
-	%ScoreLabel.text = "Previous Top Score: 0"
+	spawned_agents = agents.size()
 
 func _next_generation() -> void:
 	generation += 1
@@ -119,17 +181,18 @@ func _next_generation() -> void:
 		%SkipButton.perform_skip = false
 		dead_agents = dead_agents.merged(agents) # turns currently existing agents into dead ones
 		
-	var performant_agents: Array[Agent] = complete_agents.values().duplicate()
-	performant_agents.append_array(dead_agents.values().duplicate())
+	var performant_agents: Array[Agent] = []
+	performant_agents.append_array(complete_agents.values())
+	performant_agents.append_array(dead_agents.values())
 	performant_agents.sort_custom(func(a,b): return a.score > b.score)
 	
 	# Guarantees first two takes the brain of the generation's top scores
 	var agent_nodes = %AgentContainer.get_children()
 	best_agent = performant_agents[0]
-	agent_nodes[0].brain = performant_agents[0].brain
-	agent_nodes[1].brain = performant_agents[1].brain
+	for i in range(best_cutoff):
+		agent_nodes[i].brain = performant_agents[i % best_brains].brain
 	# Picks the rest of the agents brain through score distribution
-	for i in range(2, agent_nodes.size()):
+	for i in range(best_brains, agent_nodes.size()):
 		var parent: Agent = _pick_rank_exponential(performant_agents, 0.85)
 		agent_nodes[i].brain = mutate(parent.brain)
 
@@ -174,73 +237,72 @@ func _pick_rank_exponential(pool: Array[Agent], decay: float = 0.9) -> Agent:
 
 func reset_agents(all_reset: bool) -> void:
 	agents.clear()
-	var resulting_agents = complete_agents.duplicate().merged(dead_agents)
+	var resulting_agents: Array[Agent] 
+	resulting_agents.append_array(complete_agents.values())
+	resulting_agents.append_array(dead_agents.values())
 	
 	if all_reset: # True reset, restarts the simulation
+		print("TRUE RESET INITIATED")
 		for agent in %AgentContainer.get_children():
 			agent.queue_free()
+		for r in %RoomContainer.get_children():
+			r.queue_free()
 		setup()
-		# arrow trap doesnt reset, will implement once rooms are implemented
 	else: # Post generation reset, called after end of generation
-		for key in resulting_agents.keys():
-			var agent_instance = resulting_agents[key]
+		for agent_instance in resulting_agents:
 			agent_instance.name = str(generation) + "-" + str(agent_instance.id)
 			agent_instance.start_position = start_point
-			key = agent_instance.name
 				
 			agent_instance.reset_agent()
-			agents[key] = agent_instance
+			agent_instance.enabled(true)
+			agents[agent_instance.name] = agent_instance
 				
 	complete_agents.clear()
 	dead_agents.clear()
-	current_agent_count = start_agent_count
 
 func _outline_agents() -> void:
 	var current_agents: Array = agents.values()
-	
 	if current_agents.is_empty():
 		return
-		
-	current_agents.sort_custom(func(a, b):
-		return a.score > b.score
-	)
-			
-	var top_score_agent = current_agents[0]
-	var lowest_score_agent = current_agents[-1]
 	
-	if prev_top_score_agent: 
-		prev_top_score_agent.agent_sprite.material.set_shader_parameter(
+	var best: Agent = current_agents[0]
+	var worst: Agent = current_agents[0]
+	
+	for agent in current_agents:
+		if agent.score > best.score:
+			best = agent
+		if agent.score < worst.score:
+			worst = agent
+	
+	if prev_best: 
+		prev_best.agent_sprite.material.set_shader_parameter(
 			"outline_color", Color.from_rgba8(0, 0, 0, 0)
 		)
-	if prev_lowest_score_agent:
-		prev_lowest_score_agent.agent_sprite.material.set_shader_parameter(
+	if prev_worst:
+		prev_worst.agent_sprite.material.set_shader_parameter(
 			"outline_color", Color.from_rgba8(0, 0, 0, 0)
 		)	
 
-	top_score_agent.agent_sprite.material.set_shader_parameter(
+	best.agent_sprite.material.set_shader_parameter(
 		"outline_color", Color.from_rgba8(125, 255, 125, 185)
 		)
-	lowest_score_agent.agent_sprite.material.set_shader_parameter(
+	worst.agent_sprite.material.set_shader_parameter(
 		"outline_color", Color.from_rgba8(255, 100, 100, 185)
 		)		
 		
-	prev_top_score_agent = top_score_agent
-	prev_lowest_score_agent = lowest_score_agent
+	prev_best = best
+	prev_worst = worst
 
 func _on_send_agent_instance(agent: Agent) -> void:
 	# shove them out of the way
-	current_agent_count -= 1
 	agent.global_position = Vector2(-10000, -10000)
-	agents.erase(agent.name)
-	
-	agent.set_physics_process(false)
-	agent.visible = false
+	agents.erase(agent.name)	
+	agent.enabled(false)
 	
 	if agent.death_flag:
 		dead_agents[agent.name] = agent
 	elif agent.completed_flag:
 		complete_agents[agent.name] = agent
-		print(complete_agents)
 
 func mutate(parent_net: Net) -> Net:
 	var mutation: Net = Net.new()

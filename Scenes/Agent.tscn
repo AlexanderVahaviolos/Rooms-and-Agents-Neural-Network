@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://bhyy0dr278vwm"]
+[gd_scene load_steps=17 format=3 uid="uid://bhyy0dr278vwm"]
 
 [ext_resource type="Script" uid="uid://bjhf63a1ud7xh" path="res://Scripts/AgentScripts/Agent.gd" id="1_ptvjr"]
 [ext_resource type="Script" uid="uid://dkha4eqw0qmoa" path="res://Components/DetectionComponent.gd" id="2_hnfty"]
@@ -9,6 +9,9 @@
 [ext_resource type="Script" uid="uid://csj7q8fitqvrx" path="res://Components/MovementComponent.gd" id="5_xs5q6"]
 [ext_resource type="Texture2D" uid="uid://duyhklxq2o5r7" path="res://Sprites/agentSpritesheet.png" id="6_isa54"]
 [ext_resource type="Shader" uid="uid://bswvdmsk1qy0j" path="res://Components/Shaders/outline.gdshader" id="8_xs5q6"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_xs5q6"]
+radius = 29.068884
 
 [sub_resource type="Animation" id="Animation_qbfg8"]
 length = 0.001
@@ -89,33 +92,37 @@ collision_layer = 0
 collision_mask = 14
 script = ExtResource("2_hnfty")
 Respondee = NodePath("..")
-PayloadSendTime = 0.1
+PAYLOAD_TIME_LIMIT = 0.3
 
-[node name="DetectionShape" type="CollisionPolygon2D" parent="DetectionComponent"]
-polygon = PackedVector2Array(120, 90, -5, 15, -15, 0, -5, -15, 120, -90)
+[node name="DetectionShape" type="CollisionShape2D" parent="DetectionComponent"]
+shape = SubResource("CircleShape2D_xs5q6")
 
 [node name="Raycasts" type="Node2D" parent="DetectionComponent"]
-visible = false
 
-[node name="StaticDetector" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+[node name="Raycast1" type="RayCast2D" parent="DetectionComponent/Raycasts"]
 target_position = Vector2(120, 0)
-collision_mask = 8
+collision_mask = 14
+collide_with_areas = true
 
-[node name="StaticDetector2" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+[node name="Raycast2" type="RayCast2D" parent="DetectionComponent/Raycasts"]
 target_position = Vector2(120, -90)
-collision_mask = 8
+collision_mask = 14
+collide_with_areas = true
 
-[node name="StaticDetector3" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+[node name="Raycast3" type="RayCast2D" parent="DetectionComponent/Raycasts"]
 target_position = Vector2(120, 90)
-collision_mask = 8
+collision_mask = 14
+collide_with_areas = true
 
-[node name="StaticDetector4" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+[node name="Raycast4" type="RayCast2D" parent="DetectionComponent/Raycasts"]
 target_position = Vector2(120, -45)
-collision_mask = 8
+collision_mask = 14
+collide_with_areas = true
 
-[node name="StaticDetector5" type="RayCast2D" parent="DetectionComponent/Raycasts"]
+[node name="Raycast5" type="RayCast2D" parent="DetectionComponent/Raycasts"]
 target_position = Vector2(120, 45)
-collision_mask = 8
+collision_mask = 14
+collide_with_areas = true
 
 [node name="AgentAnimator" type="AnimationPlayer" parent="."]
 libraries = {

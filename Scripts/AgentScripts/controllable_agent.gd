@@ -30,6 +30,14 @@ var states: Dictionary = {
 	"knockback": preload("res://Scripts/AgentScripts/States/AgentStates/AgentKnockback.gd").new()
 }
 
+# Memory Testing
+var memory: MemoryInput
+@export_category("Memory Parameters")
+@export_range(4, 10, 1) var direct_memory: int = 4
+@export_range(1, 3, 1) var exit_memory: int = 2
+@export_range(1, 3, 1) var static_memory: int = 4
+@export_range(100, 300, 10) var memory_decay_distance: float = 100.0
+
 # Neural Testing
 var arrow_input: Array
 var wall_input: Array
@@ -46,18 +54,18 @@ var prev_direction: Vector2 = Vector2.ZERO
 func _ready() -> void:
 	health_component.connect("damaged", Callable(self, "_on_damaged"))
 	health_component.connect("died", Callable(self, "_on_death"))
-	detection_component.connect("target_entered", Callable(self, "_update_memory"))
-
 	state_machine.states = self.states
 	for state in states.values():
 		state_machine.add_child(state)
 	state_machine.start()
 	
-func _update_memory(detected: Node2D) -> void:
-	if memory_testing:
-		print("target name: ", detected.name, " | target: ", detected)
+	memory = MemoryInput.new(self)
+
 	
 func _debug_prints() -> void:
+	if memory_testing:
+		print("used slots: ", memory.used_slots, " memory inputs: ", memory.memory_inputs)
+	
 	if wall_testing:
 		var wall = detection_component.static_node
 		var point = detection_component.static_point
