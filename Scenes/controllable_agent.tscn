@@ -77,7 +77,9 @@ collision_mask = 0
 motion_mode = 1
 script = ExtResource("1_y4x24")
 iframes_on_hit = 15
+debug_print = 0.2
 memory_testing = true
+print_static = true
 
 [node name="DetectionComponent" type="Area2D" parent="." node_paths=PackedStringArray("Respondee")]
 collision_layer = 0
@@ -97,22 +99,22 @@ collide_with_areas = true
 
 [node name="Raycast2" type="RayCast2D" parent="DetectionComponent/Raycasts"]
 target_position = Vector2(120, -90)
-collision_mask = 8
+collision_mask = 14
 collide_with_areas = true
 
 [node name="Raycast3" type="RayCast2D" parent="DetectionComponent/Raycasts"]
 target_position = Vector2(120, 90)
-collision_mask = 8
+collision_mask = 14
 collide_with_areas = true
 
 [node name="Raycast4" type="RayCast2D" parent="DetectionComponent/Raycasts"]
 target_position = Vector2(120, -45)
-collision_mask = 8
+collision_mask = 14
 collide_with_areas = true
 
 [node name="Raycast5" type="RayCast2D" parent="DetectionComponent/Raycasts"]
 target_position = Vector2(120, 45)
-collision_mask = 8
+collision_mask = 14
 collide_with_areas = true
 
 [node name="AgentAnimator" type="AnimationPlayer" parent="."]

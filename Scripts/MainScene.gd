@@ -1,7 +1,6 @@
 extends Node
 
 var screen_size: Vector2i
-const mutation_rate: float = 0.05
 
 @export_category("Simulation Controls")
 @export_range(10, 250, 5) var total_agents: int = 5
@@ -24,11 +23,10 @@ var memory_update_timer: float = 0.0
 @export var AgentScene: PackedScene
 
 @export_group("Generation Parameters")
+@export var mutation_rate: float = 0.05
 @export_range(0, 0.2, 0.01) var best_percentage: float = 0.10
-@export_range(1, 5, 1) var best_brains: int = 3
+@export_range(0, 0.3, 0.01) var complete_percentage: float = 0.20
 var best_cutoff: int = 0
-@export_range(0.8, 0.9, 0.025) var BASE_DECAY: float = 0.85 
-@export_range(0.995, 0.999, 0.0005) var DECAY_FACTOR: float = 0.9975
 const MIN_DECAY: float = 0.8
 
 @export_category("DEBUG")
@@ -41,9 +39,15 @@ var complete_agents: Dictionary[String, Agent] = {}
 var agent_neurons: int = 0
 
 # Agent Generation data
-var best_agent: Agent = null
+var top_simulation_agents: Dictionary[Net, float] = {}
+const TOP_AGENTS_SIZE: int = 5
+var simulation_score: float = -INF
+var best_generation_agent: Agent = null
 var generation: int = 1
+var decay_generation: int
 var best_time: float
+
+var controlled_agent: CharacterBody2D
 
 # Room Settings
 
@@ -62,12 +66,129 @@ var prev_worst: Agent
 
 func _ready() -> void:
 	%SkipButton.connect("pressed", Callable(self, "_next_generation"))
+	%ExportButton.connect("pressed", Callable(self, "save_simulation"))
+	%ImportButton.connect("pressed", Callable(self, "load_simulation"))
 	randomize()
 	screen_size = get_viewport().get_visible_rect().size
 	setup()
 
-# Just an agent size check
+func save_simulation(path: String = "user://sim_save.json") -> void:
+	var data := {}
+	
+	data.generation = generation
+	data.total_agents = total_agents
+	data.simulation_score = simulation_score
+	
+	data.top_agents = []
+	for net in top_simulation_agents.keys():
+		var rec := {
+			"score": top_simulation_agents[net],
+			"brain": net.to_dict(),
+		}
+		data.top_agents.append(rec)
+		
+	var json := JSON.stringify(data, "\t")
+	
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		push_error("Could not open save file: ", path)
+		return
+	file.store_string(json)
+	file.close()
+	
+	print("Simulation saved to : ", path)
+
+func load_simulation(path: String = "user://sim_save.json") -> void:
+	if not FileAccess.file_exists(path):
+		push_error("Save file does not exist: ", path)
+		return
+		
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_error("Could not open save file: ", path)
+		return
+	var text := file.get_as_text()
+	file.close()
+	
+	var parsed = JSON.parse_string(text)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_error("Invalid save data")
+		return
+		
+	var data: Dictionary = parsed
+	
+	# Restore basic variables
+	generation = int(data.get("generation", 1))
+	total_agents = int(data.get("total_agents", total_agents))
+	simulation_score = float(data.get("simulation_score", 0.0))
+	
+	# Restore top brains
+	top_simulation_agents.clear()
+	var top_datas: Array = data.get("top_agents", [])
+	for rec in top_datas:
+		var brain_dict: Dictionary = rec.brain
+		var score: float = float(rec.score)
+		var brain: Net = Net.from_dict(SimulationManager.neuron_size, brain_dict)
+		top_simulation_agents[brain] = score
+	
+	print("Simulation loaded from: ", path)
+	_start_from_load()
+
+func _start_from_load() -> void:
+	for agent in %AgentContainer.get_children():
+		agent.queue_free()
+		
+	agents.clear()
+	dead_agents.clear()
+	complete_agents.clear()
+	
+	spawned_agents = 0
+	memory_update_timer = 0.0
+	check_score_timer = 0.0
+	best_generation_agent = null
+	@warning_ignore("narrowing_conversion")
+	best_cutoff = total_agents * best_percentage
+	
+	_spawn_agents(total_agents)
+	
+	var brains: Array = top_simulation_agents.keys()
+	if brains.is_empty():
+		push_warning("Loaded simulation has no top_simulation_agents; using random brains.")
+	else:
+		var agent_nodes: Array = %AgentContainer.get_children()
+		var brain_count: int = brains.size()
+		
+		var scores: Array[float] = top_simulation_agents.values()
+		var idxs := range(brain_count)
+		idxs.sort_custom(func(a, b):
+			return scores[a] > scores[b]
+		)
+		
+		for i in range(agent_nodes.size()):
+			var brain: Net = brains[idxs[i % brain_count]]
+			agent_nodes[i].brain = brain.clone()
+			agent_nodes[i].reset_agent()
+				
+	_update_text()
+
+		
 func _physics_process(delta: float) -> void:
+	# CHARACTER
+	if enable_character:
+		if spawned_agents == 0:
+			_spawn_agents(1)
+			spawned_agents += 1
+			var ag = %AgentContainer.get_child(0)
+			controlled_agent = ag
+		
+		memory_update_timer += delta
+		if memory_update_timer >= MEMORY_TIMER_LIMIT:
+			var dt: float = memory_update_timer
+			memory_update_timer = 0.0
+			controlled_agent.memory.update_memory()
+			controlled_agent.scoring.update_score(dt)
+		return
+	
 	# SPAWNING AGENTS
 	if spawned_agents != total_agents:
 		agent_spawn_timer += delta
@@ -111,7 +232,7 @@ func _physics_process(delta: float) -> void:
 			var idx: int = process_count + i
 			var agent: Agent = list[idx]
 			agent.memory.update_memory()
-			agent.update_score(dt)
+			agent.scoring.update_score(dt)
 		
 		process_count += p_count
 		if process_count >= agent_count:
@@ -121,20 +242,10 @@ func _physics_process(delta: float) -> void:
 	if !enable_character and !%LoopButton.button_pressed and agents.is_empty():
 		print("End of Generation: ", generation)
 		_next_generation()
-	
-func setup() -> void:
-	# Initial Setup for the room and the agents
-	generation = 0
-	spawned_agents = 0
-	memory_update_timer = 0.0
-	check_score_timer = 0.0
-	best_agent = null
-	@warning_ignore("narrowing_conversion")
-	best_cutoff = total_agents * best_percentage
-	
-	# Generate Room Code
+
+func _create_room() -> void:
 	current_room = ["Room1"].pick_random()
-	match(current_room):
+	match current_room:
 		"Room1":
 			FAST_TIME = 10.0
 			SLOW_TIME = 40.0
@@ -144,8 +255,20 @@ func setup() -> void:
 			%RoomContainer.add_child(room)
 		_:
 			push_error("Invalid room chosen: ", current_room)
+			
+func setup() -> void:
+	# Initial Setup for the room and the agents
+	generation = 0
+	spawned_agents = 0
+	memory_update_timer = 0.0
+	check_score_timer = 0.0
+	best_generation_agent = null
+	@warning_ignore("narrowing_conversion")
+	best_cutoff = total_agents * best_percentage
 	
-	if enable_chunking:
+	_create_room()
+	
+	if enable_chunking and !enable_character:
 		@warning_ignore("integer_division")
 		process_chunk = max(1, total_agents / chunk_partitions)
 		@warning_ignore("integer_division")
@@ -170,6 +293,7 @@ func _spawn_agents(count: int) -> void:
 			agents[agent_instance.name] = agent_instance
 	else:
 		var agent_instance = ControllableAgentScene.instantiate()
+		agent_instance.start_position = start_point
 		%AgentContainer.add_child(agent_instance)
 	spawned_agents = agents.size()
 
@@ -180,43 +304,85 @@ func _next_generation() -> void:
 		print("GOING TO: GENERATION ", generation)
 		%SkipButton.perform_skip = false
 		dead_agents = dead_agents.merged(agents) # turns currently existing agents into dead ones
-		
+	
 	var performant_agents: Array[Agent] = []
 	performant_agents.append_array(complete_agents.values())
 	performant_agents.append_array(dead_agents.values())
 	performant_agents.sort_custom(func(a,b): return a.score > b.score)
 	
-	# Guarantees first two takes the brain of the generation's top scores
+	# Death Classification
+	for dead_agent in dead_agents.values():
+		SimulationManager.DEATHS_COUNTER[dead_agent.death_reason] += 1
+	print("prom death reason: ", SimulationManager.prominent_death_reason())
+	
+	# Simulation Top Scorers
 	var agent_nodes = %AgentContainer.get_children()
-	best_agent = performant_agents[0]
-	for i in range(best_cutoff):
-		agent_nodes[i].brain = performant_agents[i % best_brains].brain
+	best_generation_agent = performant_agents[0]
+	var best_gen_brain: Net = performant_agents[0].brain.clone()
+	
+	# Top Simulation Agents
+	var keys: Array[Net] = top_simulation_agents.keys()
+	if top_simulation_agents.size() < TOP_AGENTS_SIZE and best_generation_agent.score > 0:
+		if top_simulation_agents.size() == 0:
+			decay_generation = generation
+		top_simulation_agents[best_gen_brain] = best_generation_agent.score
+		keys.append(best_gen_brain)
+	else:
+		if complete_agents.has(best_generation_agent.name):
+			var keys_ascending: Array[Net] = keys.duplicate()
+			keys_ascending.reverse() # Keys in Ascending Order
+			for key in keys_ascending:
+				if best_generation_agent.score > top_simulation_agents[key]:
+					keys.erase(key)
+					keys.append(best_gen_brain)
+					top_simulation_agents.erase(key)
+					top_simulation_agents[best_gen_brain] = best_generation_agent.score
+					break
+	
+	var top_scorers: Array[float] = top_simulation_agents.values()
+	top_scorers.sort() # Sort Ascending
+	top_scorers.reverse() # Reverse to be sorted Descending
+	
+	if top_scorers.is_empty():
+		simulation_score = best_generation_agent.score
+	else:
+		simulation_score = top_scorers[0]
+	
+	for i in range(top_simulation_agents.values().size()):
+		print(i, ": ", top_simulation_agents.values()[i])
+	
+	# Adjust cutoff
+	var cutoff = best_cutoff
+	if !complete_agents.is_empty():
+		cutoff = total_agents * (best_percentage + complete_percentage)
+	if complete_agents.size() > (total_agents * (best_percentage/2)):
+		cutoff = total_agents
+	if keys.is_empty():
+		cutoff = 0
+	
+	# Inserts Simulation's best agents
+	for i in range(cutoff):
+		var key: Net = keys[i % keys.size()]
+		var chosen_brain = key
+		if i > best_cutoff:
+			agent_nodes[i].brain = mutate(chosen_brain)
+		else:
+			agent_nodes[i].brain = chosen_brain
 	# Picks the rest of the agents brain through score distribution
-	for i in range(best_brains, agent_nodes.size()):
+	for i in range(cutoff, total_agents):
 		var parent: Agent = _pick_rank_exponential(performant_agents, 0.85)
-		agent_nodes[i].brain = mutate(parent.brain)
+		var new_brain: Net = parent.brain.clone()
+		agent_nodes[i].brain = mutate(new_brain)
 
-	# Update UI
-	%GenerationLabel.text = "Generation " + str(generation)
-	%ScoreLabel.text = "Previous Top Score: %.2f" % best_agent.score
-	print("generation " + str(generation) + " score: " + str(best_agent.score))
+	_update_text()
 
 	# then add them back to the regular agent list and reset them
 	reset_agents(false)
 
-func _get_current_decay(gen: int) -> float:
-	var base_decay = BASE_DECAY * pow(DECAY_FACTOR, float(gen - 1))
-	
-	var t: float = clamp((best_time - FAST_TIME) / max(SLOW_TIME - FAST_TIME, 0.001), 0.0, 1.0)
-	var time_factor: float = lerp(MIN_TIME_FACTOR, 1.0, t)
-	
-	var final_decay: float = base_decay * time_factor
-	return max(final_decay, MIN_DECAY)
-
 func _pick_rank_exponential(pool: Array[Agent], decay: float = 0.9) -> Agent:
 	# Sort best to worst by score
 	pool.sort_custom(func(a, b): return a.score > b.score)
-	var n := pool.size()
+	var n: int = pool.size()
 	var total := 0.0
 	var weights: Array[float] = []
 
@@ -243,6 +409,8 @@ func reset_agents(all_reset: bool) -> void:
 	
 	if all_reset: # True reset, restarts the simulation
 		print("TRUE RESET INITIATED")
+		simulation_score = 0
+		top_simulation_agents.clear()
 		for agent in %AgentContainer.get_children():
 			agent.queue_free()
 		for r in %RoomContainer.get_children():
@@ -254,9 +422,9 @@ func reset_agents(all_reset: bool) -> void:
 			agent_instance.start_position = start_point
 				
 			agent_instance.reset_agent()
-			agent_instance.enabled(true)
 			agents[agent_instance.name] = agent_instance
-				
+	
+	SimulationManager.reset()
 	complete_agents.clear()
 	dead_agents.clear()
 
@@ -293,26 +461,31 @@ func _outline_agents() -> void:
 	prev_best = best
 	prev_worst = worst
 
+func _update_text() -> void:
+	# Update UI
+	%GenerationLabel.text = "Generation " + str(generation)
+	%ScoreLabel.text = "Previous Top Score: %.2f" % simulation_score
+	print("generation " + str(generation) + " score: " + str(simulation_score))
+
 func _on_send_agent_instance(agent: Agent) -> void:
 	# shove them out of the way
 	agent.global_position = Vector2(-10000, -10000)
 	agents.erase(agent.name)	
 	agent.enabled(false)
-	
+		
 	if agent.death_flag:
 		dead_agents[agent.name] = agent
 	elif agent.completed_flag:
 		complete_agents[agent.name] = agent
 
 func mutate(parent_net: Net) -> Net:
-	var mutation: Net = Net.new()
+	var child: Net = parent_net.clone()
 	
-	for i in range(parent_net.layers.size()):
-		for j in range(parent_net.layers[i].neurons.size()):
-			for k in range(parent_net.layers[i].neurons[j].weights.size()): 
+	for layer in child.layers:
+		for neuron in layer.neurons:
+			for w_i in range(neuron.weights.size()):
 				if randf() <= mutation_rate:
-					mutation.layers[i].neurons[j].weights.append(randf_range(-1, 1))
-				else:
-					mutation.layers[i].neurons[j].weights.append(parent_net.layers[i].neurons[j].weights[k])
-	return mutation
+					neuron.weights[w_i] = randf_range(-1.0, 1.0)
+	
+	return child
 			

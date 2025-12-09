@@ -13,10 +13,9 @@ var direct_dict: Dictionary[String, Dictionary] = {}
 var static_dict: Dictionary[String, Dictionary] = {}
 var moving_dict: Dictionary[String, Dictionary] = {}
 
-var memory_slots: int 
 var memory_size: int
+var SLOT_SIZE: int
 var used_slots: int = 0
-var slot_size: int = 4
 var MDD: float
 
 var d_memory: int
@@ -26,19 +25,19 @@ var s_memory: int
 # Inputs from DirectionComponent
 var d_comp: DetectionComponent
 
-func _init(ag_ref: Node2D) -> void:
+func _init(ag_ref: CharacterBody2D) -> void:
 	self.agent_reference = ag_ref
-	self.MDD = agent_reference.memory_decay_distance
+	self.MDD = SimulationManager.memory_decay_distance
 	self.d_comp = agent_reference.detection_component
 	
-	self.d_memory = agent_reference.direct_memory
-	self.e_memory = agent_reference.exit_memory
-	self.s_memory = agent_reference.static_memory
+	self.d_memory = SimulationManager.direct_memory
+	self.e_memory = SimulationManager.exit_memory
+	self.s_memory = SimulationManager.static_memory
+	
+	self.memory_size = SimulationManager.memory_size
+	self.SLOT_SIZE = SimulationManager.SLOT_SIZE
 	
 	d_comp.connect("send_payload", Callable(self, "_receive_payload"))
-	
-	memory_slots = d_memory + e_memory + s_memory + 1 # +1 for arrow memory
-	memory_size = memory_slots * slot_size + 2 # +2 for arrows
 	
 	memory_inputs.resize(memory_size)
 	memory_inputs.fill(0.0)
@@ -60,13 +59,13 @@ func _receive_payload(payload: Array[Array]) -> void:
 		var node: Node2D = item[0]
 		var point: Vector2 = item[1]
 		
-		# Check if node is already in memory
-		if memory_dict.has(node.name):
-			continue
-		
 		var area_type: Array = SimulationManager.area_classifier(node)
 		var dict_key: String = area_type[0]
 		var type_value: int = area_type[1]
+		
+		# Check if node is already in memory and point needs to be constantly updated
+		if memory_dict.has(node.name) and dict_key != "static":
+			continue
 		
 		changed = true
 		match(dict_key):
@@ -101,7 +100,7 @@ func _process_memory_dict(dict: Dictionary, dict_slots: int, allow_decay: bool) 
 			
 		# Checking whether to append velocity or not
 		if memory_dict[key]["type"] == SimulationManager.Detectables.ARROW:
-			memory_dict[key]["projectile_direction"] = d["node"].velocity.normalized()
+			memory_dict[key]["node_direction"] = d["node"].velocity.normalized()
 	
 		# Checking if current memory type is Exit for scoring purposes
 		if memory_dict[key]["type"] == SimulationManager.Detectables.EXIT:
@@ -140,32 +139,33 @@ func _count_used_slots() -> void:
 
 func _build_memory_inputs() -> void:
 	var inputs: Array[float] = []
-	var index: int = 0
 	inputs.resize(memory_size)
 	inputs.fill(0.0)
 	
-	var keys := memory_dict.keys()
-	keys.sort()
+	var index: int = 0
+	var keys: Array[String] = memory_dict.keys()
+	keys.sort_custom(func(a, b):
+		return memory_dict[a]["distance"] < memory_dict[b]["distance"]
+	)
 	
 	for key in keys:
-		if index + slot_size > memory_size:
+		if index + SLOT_SIZE > memory_size:
 			break
 	
 		var d = memory_dict[key]
 		var dir_vec = d["direction"].normalized()
 		var dist_norm = clamp(d["distance"] / MDD, 0.0, 1.0)
+		var node_dir = Vector2.ZERO
+		if d["type"] == SimulationManager.Detectables.ARROW:
+			node_dir = d["node_direction"]
 		
 		inputs[index + 0] = d["type"]
 		inputs[index + 1] = dir_vec.x
 		inputs[index + 2] = dir_vec.y
 		inputs[index + 3] = 1.0 - dist_norm
-		
-		if d["type"] == SimulationManager.Detectables.ARROW:
-			var arrow_dir = d["projectile_direction"]
-			inputs[index + 4] = arrow_dir.x
-			inputs[index + 5] = arrow_dir.y
-			index += 2
+		inputs[index + 4] = node_dir.x
+		inputs[index + 5] = node_dir.y
 			
-		index += slot_size
+		index += SLOT_SIZE
 	
 	memory_inputs = inputs

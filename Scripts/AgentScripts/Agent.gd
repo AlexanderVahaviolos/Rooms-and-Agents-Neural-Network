@@ -14,12 +14,6 @@ signal send_instance(agent: Agent)
 @export var iframes_on_hit: int
 var iframes: float = 0
 
-@export_category("Memory Parameters")
-@export_range(4, 10, 1) var direct_memory: int = 4
-@export_range(1, 3, 1) var exit_memory: int = 2
-@export_range(1, 3, 1) var static_memory: int = 4
-@export_range(20, 50, 2) var memory_decay_distance: float = 30.0
-
 var flip_threshold: float = 0.1
 
 # x-pos: room number | y-pos: room number variant
@@ -32,53 +26,22 @@ var states: Dictionary = {
 	"knockback": preload("res://Scripts/AgentScripts/States/AgentStates/AgentKnockback.gd").new()
 }
 
-enum DeathTypes {
-	BAD_SCORE,
-	SPINNING,
-	CIRCLING,
-	STAGNATION,
-	WALL_TOUCH,
-	WALL_STUCK,
-	NO_MOVEMENT
-}
 var death_reason: int
 
 # Neural Network Variables
-var brain: Net = Net.new()
+var brain: Net
 var memory: MemoryInput
+var scoring: Score
+var score: float = 0
 var agent_inputs: Array[float] = []
-const AGENT_INP_SIZE: int = 7
 var neuron_inputs: Array[float] = []
-var score: float = 0.0
+var neuron_size: int
 var time_alive: float = 0.0
 var id: int
-
-# --- STAGNATION CHECKING ---
-var stagnation_timer: float = 0.0
-var last_significant_score: float = 0.0
-
-# --- CIRCLE CHECKING ---
-var circle_timer: float = 0.0
-var total_path_length: float = 0.0
-const MIN_PATH_LENGTH: float = 100.0 # ignoring very short early runs
-const EFFICIENCY_THRESHOLD: float = 0.15 # <15% effective progress
-const CIRCLE_TIME_LIMIT: float = 5.0
-
-# --- SPINNING CHECKING ---
-var spin_timer: float = 0.0
-var prev_spin_angle: float = 0.0
-var total_spin_angle: float = 0.0
-const SPIN_THRESHOLD: float = TAU*2
-const SPIN_TIME_LIMIT: float = 5.0
-const SMALL_ANGLE: float = deg_to_rad(3)
 
 # --- WALL CHECKING ---
 var wall_touch_counter: int = 0
 var wall_flag: bool = false
-var stuck_timer: float = 0.0
-
-# --- IDLE CHECKING ---
-var idle_time: float = 0.0
 
 # --- AGENT FINAL CONDITIONS --- 
 var death_flag: bool = false
@@ -98,33 +61,18 @@ var prev_position: Vector2
 var prev_velocity: Vector2
 
 func reset_agent() -> void:
+	detection_component.reset()
 	memory.reset()
+	scoring.reset()
 	neuron_inputs.fill(0.0)
 	agent_inputs.fill(0.0)
-	
 	score = 0.0
+	
 	time_alive = 0.0
-	
-	# --- STAGNATION CHECKING ---
-	stagnation_timer = 0.0
-	last_significant_score = 0.0
 
-	# --- SPINNING CHECKING ---
-	spin_timer = 0.0
-	prev_spin_angle = 0.0
-	total_spin_angle = 0.0
-
-	# --- CIRCLE CHECKING ---
-	circle_timer = 0.0
-	total_path_length = 0.0
-	
 	# --- WALL CHECKING ---
 	wall_touch_counter = 0
 	wall_flag = false
-	stuck_timer = 0.0
-
-	# --- IDLE CHECKING ---
-	idle_time = 0.0
 
 	# --- AGENT FINAL CONDITIONS --- 
 	death_reason = -1
@@ -142,24 +90,27 @@ func reset_agent() -> void:
 	turn_angle = 0 
 	prev_position = global_position
 	prev_velocity = velocity
+	enabled(true)
 
 func enabled(state: bool) -> void:
 	detection_component.set_physics_process(state)
 	self.set_physics_process(state)
 	visible = state
 
-func _ready() -> void:	
+func _ready() -> void:
 	global_position = start_position
 	
-	prev_spin_angle = direction.angle()
 	prev_position = global_position
 	prev_velocity = velocity
 	
 	memory = MemoryInput.new(self)
-	agent_inputs.resize(AGENT_INP_SIZE)
+	scoring = Score.new(self)
+	neuron_size = SimulationManager.neuron_size
+	agent_inputs.resize(SimulationManager.AGENT_INP_SIZE)
 	agent_inputs.fill(0.0)
-	neuron_inputs.resize(AGENT_INP_SIZE + memory.memory_size)
+	neuron_inputs.resize(neuron_size)
 	neuron_inputs.fill(0.0)
+	brain = Net.new(neuron_size)
 	
 	health_component.connect("damaged", Callable(self, "_on_damaged"))
 	health_component.connect("died", Callable(self, "_on_death"))
@@ -174,6 +125,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if death_flag:
 		send_instance.emit(self)
+	time_alive += delta
 	
 	# Step 1: Fill in agent_inputs array
 	var normalized_pos: Vector2 = global_position / Vector2(WindowManager.screen_size)
@@ -183,7 +135,7 @@ func _physics_process(delta: float) -> void:
 	if is_on_wall() and !wall_flag:
 		wall_sensor_value = 1.0
 		wall_touch_counter += 1
-		score -= 20
+		scoring.score -= 20
 		wall_flag = true
 	elif !is_on_wall() and wall_flag:
 		wall_sensor_value = 0.0
@@ -199,11 +151,11 @@ func _physics_process(delta: float) -> void:
 	agent_inputs[6] = wall_sensor_value
 	
 	# Step 2: Copy agent_inputs + memory_inputs into neuron_inputs
-	for i in range(AGENT_INP_SIZE):
+	for i in range(SimulationManager.AGENT_INP_SIZE):
 		neuron_inputs[i] = agent_inputs[i]
 		
 	for i in range(memory.memory_size):
-		neuron_inputs[AGENT_INP_SIZE + i] = memory.memory_inputs[i]
+		neuron_inputs[SimulationManager.AGENT_INP_SIZE + i] = memory.memory_inputs[i]
 	
 	# Step 3: Get Agent prediction
 	var output = brain.predict(neuron_inputs)
@@ -224,145 +176,9 @@ func _physics_process(delta: float) -> void:
 		iframes -= ceil(delta)
 	move_and_slide()
 
-func update_score(delta: float) -> void:
-	time_alive += delta
-	
-	var dist_moved = global_position.distance_to(prev_position)
-	var net_displacement = global_position.distance_to(start_position)
-	var vel_aligned = 0.0
-	if velocity.length() > 0.001:
-		vel_aligned = velocity.normalized().dot(direction)
-
-	# Movement / Alignment Rewards
-	if dist_moved > 0.0:
-		score += dist_moved * 0.05
-	if vel_aligned > 0.7:
-		score += 0.05
-	else:
-		score -= 0.02
-	
-	# Penalty for being Idle 
-	if velocity.length() < 1.0:
-		score -= delta * 0.1
-	
-	# Exit penalties and bonuses
-	if memory.exit_dict.size() > 0:
-		# Check if they are in line with the exit direction
-		for key in memory.exit_dict.keys():
-			var exit_dir = memory.memory_dict[key]["direction"].normalized()
-			var exit_aligned = velocity.normalized().dot(exit_dir)
-			var prev_exit_distance = prev_exit_distances[key]
-			
-			if exit_aligned > 0.7:
-				score += 0.2
-			else:
-				score -= 0.05
-			if memory.memory_dict[key]["distance"] < prev_exit_distance:
-				score += 0.5
-			else:
-				score -= 0.1
-			prev_exit_distances[key] = memory.memory_dict[key]["distance"]
-			
-	# ------ KILL CHECKS --------
-	
-	# OVERALL JUST BAD CHECK
-	if score < -40:
-		death_flag = true
-		death_reason = DeathTypes.BAD_SCORE
-		return
-	
-	# SPIN CHECK
-	var current_spin_angle = direction.angle()
-	var delta_rotation_rad = current_spin_angle - prev_spin_angle
-	
-	if delta_rotation_rad > PI:
-		delta_rotation_rad -= TAU
-	elif delta_rotation_rad < -PI:
-		delta_rotation_rad += TAU
-	
-	prev_spin_angle = current_spin_angle
-		
-	if abs(delta_rotation_rad) > SMALL_ANGLE:
-		spin_timer += delta
-		total_spin_angle += abs(delta_rotation_rad)
-	else:	
-		total_spin_angle = 0.0
-		spin_timer = 0.0
-		
-	if spin_timer >= SPIN_TIME_LIMIT and total_spin_angle >= SPIN_THRESHOLD: # 2 full cycles
-		score -= 20
-		death_flag = true
-		death_reason = DeathTypes.SPINNING
-		return
-	
-	# CIRCLE CHECK
-	total_path_length += dist_moved
-	var efficiency = (net_displacement / max(total_path_length, 0.001))
-	
-	if total_path_length > MIN_PATH_LENGTH and efficiency < EFFICIENCY_THRESHOLD:
-		circle_timer += delta
-	else:
-		circle_timer = 0.0
-	
-	if circle_timer > CIRCLE_TIME_LIMIT:
-		score -= 15.0
-		death_flag = true
-		death_reason = DeathTypes.CIRCLING
-		return
-		
-	# TOUCHED THE WALL TOO MANY TIMES CHECK
-	if wall_touch_counter > 4:
-		# score is already deducted every wall touch
-		death_flag = true
-		death_reason = DeathTypes.WALL_TOUCH
-		return
-	
-	# PROGRESS CHECK
-	var progress = score - last_significant_score
-
-	if progress > 0.03:
-		stagnation_timer = 0.0
-		last_significant_score = score
-	else:
-		stagnation_timer += delta
-
-	if stagnation_timer > 5.0: # 5 seconds of no real score gain
-		score -= 20.0
-		death_flag = true
-		death_reason = DeathTypes.STAGNATION
-		return
-	
-	# STUCK ON WALL CHECK
-	if is_on_wall() and dist_moved < 1.0:
-		stuck_timer += delta
-	else:
-		stuck_timer = 0.0
-	
-	if stuck_timer > 2.0:
-		score -= 40.0
-		death_flag = true
-		death_reason = DeathTypes.WALL_STUCK
-		return
-	
-	# NO MOVEMENT CHECK
-	if dist_moved < 1.0 and velocity.length() < 2.0: # and if no arrow trap in range
-		idle_time += delta
-		if idle_time > 5.0:
-			score -= 20.0
-			death_flag = true
-			death_reason = DeathTypes.NO_MOVEMENT
-			return
-	else:
-		idle_time = 0.0
-	
-	# ---------------------------
-	
-	prev_position = global_position
-	prev_velocity = velocity
-
 func _on_damaged(_damage: int) -> void:
 	state_machine.change_state("knockback")
 	
 func _on_death() -> void:
-	score -= 15
+	scoring.score -= 15
 	death_flag = true

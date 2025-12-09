@@ -35,6 +35,7 @@ RoomsScene = Dictionary[String, PackedScene]({
 AgentScene = ExtResource("3_7rqgy")
 best_percentage = 0.2
 ControllableAgentScene = ExtResource("4_7rqgy")
+enable_character = true
 
 [node name="SimulationCamera" type="Camera2D" parent="."]
 zoom = Vector2(1.2, 1.2)
@@ -107,13 +108,11 @@ script = ExtResource("6_gyaec")
 MainScene = NodePath("../../../../..")
 
 [node name="ExportButton" type="TextureButton" parent="UIComponents/SimulationControls/MContainerT/HBoxContainer"]
-unique_name_in_owner = true
 layout_mode = 2
 texture_normal = ExtResource("6_c1ier")
 script = ExtResource("8_p5ymy")
 
 [node name="ImportButton" type="TextureButton" parent="UIComponents/SimulationControls/MContainerT/HBoxContainer"]
-unique_name_in_owner = true
 layout_mode = 2
 texture_normal = ExtResource("7_gyaec")
 script = ExtResource("10_3va76")
